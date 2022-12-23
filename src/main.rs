@@ -2,23 +2,27 @@ use svg;
 use svg::node::element;
 
 fn main() {
-    let width = 300;
     let x = 50;
     let y = 80;
     let px = 12;
-    let table_height = 247;
-    let header_height = 36;
+    let line_height = 35;
+    let text_baseline = 22;
+    let header_height = line_height;
     let border_radius = 6;
     let light_gray_color = "#494949";
     let text_color = "white";
     let header_text = "users";
-    let rows = ["id", "uuid"];
+    let rows = ["id", "uuid", "email", "text", "about_html", "name"];
+
+    // +1 for header
+    let table_height = line_height * (rows.len() + 1);
+    let table_width = 300;
 
     // clip path
     let rect = element::Rectangle::new()
         .set("x", x)
         .set("y", y)
-        .set("width", width)
+        .set("width", table_width)
         .set("height", header_height);
 
     let header_clip_path_id = "cut-off-table-header";
@@ -29,7 +33,7 @@ fn main() {
     let header_bg = element::Rectangle::new()
         .set("x", x)
         .set("y", y)
-        .set("width", width)
+        .set("width", table_width)
         .set("height", table_height)
         .set("rx", border_radius)
         .set("ry", border_radius)
@@ -39,7 +43,7 @@ fn main() {
 
     let header_text = element::Text::new()
         .set("x", x + px)
-        .set("y", y + 23)
+        .set("y", y + text_baseline)
         .set("fill", text_color)
         .set("font-weight", "bold")
         .set("font-family", "Monaco,monospace")
@@ -55,8 +59,8 @@ fn main() {
     let table_bg = element::Rectangle::new()
         .set("x", x)
         .set("y", y)
-        .set("width", width)
-        .set("height", 247)
+        .set("width", table_width)
+        .set("height", line_height * (rows.len() + 1))
         .set("rx", border_radius)
         .set("ry", border_radius)
         .set("stroke", light_gray_color)
@@ -77,10 +81,10 @@ fn main() {
 
     for (i, row) in rows.iter().enumerate() {
         if i > 0 {
-            let y = base + 34 * i;
+            let y = base + line_height * i;
             let line = element::Line::new()
                 .set("x1", x)
-                .set("x2", x + width)
+                .set("x2", x + table_width)
                 .set("y1", y)
                 .set("y2", y)
                 .set("stroke", light_gray_color)
@@ -90,7 +94,7 @@ fn main() {
 
         let label = element::Text::new()
             .set("x", x + px)
-            .set("y", (base + 22) + 35 * i)
+            .set("y", (base + text_baseline) + line_height * i)
             .set("fill", text_color)
             .set("font-weight", "lighter")
             .set("font-family", "Courier New,monospace")
