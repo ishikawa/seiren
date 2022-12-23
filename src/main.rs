@@ -5,6 +5,7 @@ fn main() {
     let width = 300;
     let x = 50;
     let y = 80;
+    let px = 12;
     let table_height = 247;
     let header_height = 36;
     let border_radius = 6;
@@ -37,7 +38,7 @@ fn main() {
         .set("clip-path", format!("url(#{})", header_clip_path_id));
 
     let header_text = element::Text::new()
-        .set("x", x + 12)
+        .set("x", x + px)
         .set("y", y + 23)
         .set("fill", text_color)
         .set("font-weight", "bold")
@@ -88,7 +89,7 @@ fn main() {
         }
 
         let label = element::Text::new()
-            .set("x", x + 12)
+            .set("x", x + px)
             .set("y", (base + 22) + 35 * i)
             .set("fill", text_color)
             .set("font-weight", "lighter")
