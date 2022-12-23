@@ -2,6 +2,9 @@ use svg;
 use svg::node::element;
 
 fn main() {
+    let header_text = "users";
+    let rows = ["id", "uuid", "email", "text", "about_html", "name"];
+
     let x = 50;
     let y = 80;
     let px = 12;
@@ -11,8 +14,6 @@ fn main() {
     let border_radius = 6;
     let light_gray_color = "#494949";
     let text_color = "white";
-    let header_text = "users";
-    let rows = ["id", "uuid", "email", "text", "about_html", "name"];
 
     // +1 for header
     let table_height = line_height * (rows.len() + 1);
@@ -46,7 +47,7 @@ fn main() {
         .set("y", y + text_baseline)
         .set("fill", text_color)
         .set("font-weight", "bold")
-        .set("font-family", "Monaco,monospace")
+        .set("font-family", "Monaco,Lucida Console,monospace")
         .add(svg::node::Text::new(header_text));
 
     // Background
