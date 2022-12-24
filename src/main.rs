@@ -22,12 +22,20 @@ impl Document {
         let light_gray_color = "#494949";
         let text_color = "white";
         let table_width = 300;
-        let table_space = 20;
+        let table_space = 80;
         let header_clip_path_id_prefix = "header-clip-path-";
 
         // Build a SVG document
         let mut doc = svg::Document::new().set("version", "1.1");
         let mut defs = element::Definitions::new();
+
+        // Background
+        let background = element::Rectangle::new()
+            .set("width", "100%")
+            .set("height", "100%")
+            .set("fill", "#1c1c1c");
+
+        doc = doc.add(background);
 
         // defs
         for (table_index, _) in self.tables.iter().enumerate() {
@@ -52,7 +60,7 @@ impl Document {
 
         // shapes
         for (table_index, table) in self.tables.iter().enumerate() {
-            let x = x + (table_width + table_space) * table_index;
+            let x = x + ((table_width + table_space) * table_index);
             // +1 for header
             let table_height = line_height * (table.columns.len() + 1);
 
@@ -76,12 +84,6 @@ impl Document {
                 .set("font-family", "Monaco,Lucida Console,monospace")
                 .add(svg::node::Text::new(table.name.clone()));
 
-            // Background
-            let background = element::Rectangle::new()
-                .set("width", "100%")
-                .set("height", "100%")
-                .set("fill", "#1c1c1c");
-
             // Table
             let table_bg = element::Rectangle::new()
                 .set("x", x)
@@ -93,11 +95,7 @@ impl Document {
                 .set("stroke", light_gray_color)
                 .set("fill", "#212121");
 
-            doc = doc
-                .add(background)
-                .add(table_bg)
-                .add(header_bg)
-                .add(header_text);
+            doc = doc.add(table_bg).add(header_bg).add(header_text);
 
             // columns
             let base = y + header_height;
@@ -173,25 +171,48 @@ impl Column {
 
 fn main() {
     let mut doc = Document::new();
-    let mut table = Table::new("users".into());
+    let mut users_table = Table::new("users".into());
+    let mut posts_table = Table::new("posts".into());
 
-    table
+    // users
+    users_table
         .columns
         .push(Column::new("id".into(), ColumnType::Int));
-    table
+    users_table
         .columns
         .push(Column::new("uuid".into(), ColumnType::Uuid));
-    table
+    users_table
         .columns
         .push(Column::new("email".into(), ColumnType::Text));
-    table
+    users_table
         .columns
         .push(Column::new("about_html".into(), ColumnType::Text));
-    table
+    users_table
         .columns
         .push(Column::new("created_at".into(), ColumnType::Timestamp));
 
-    doc.tables.push(table);
+    // posts
+    posts_table
+        .columns
+        .push(Column::new("id".into(), ColumnType::Int));
+    posts_table
+        .columns
+        .push(Column::new("uuid".into(), ColumnType::Uuid));
+    posts_table
+        .columns
+        .push(Column::new("title".into(), ColumnType::Text));
+    posts_table
+        .columns
+        .push(Column::new("content".into(), ColumnType::Text));
+    posts_table
+        .columns
+        .push(Column::new("created_at".into(), ColumnType::Timestamp));
+    posts_table
+        .columns
+        .push(Column::new("created_by".into(), ColumnType::Int));
+
+    doc.tables.push(users_table);
+    doc.tables.push(posts_table);
 
     println!("{}", doc.into_svg());
 }
