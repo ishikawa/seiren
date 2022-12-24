@@ -168,3 +168,24 @@ impl Column {
         Self { name, r#type }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_doc() {
+        let doc = Document::new();
+        let svg = doc.into_svg();
+
+        assert_eq!(svg.get_name(), "svg");
+        assert_eq!(
+            svg.get_attributes().get("version").map(|x| x.to_string()),
+            Some("1.1".into())
+        );
+        assert_eq!(
+            svg.get_attributes().get("xmlns").map(|x| x.to_string()),
+            Some("http://www.w3.org/2000/svg".into())
+        );
+    }
+}
