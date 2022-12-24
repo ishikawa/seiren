@@ -6,7 +6,13 @@ pub enum WebColor {
     Named(NamedColor),
 }
 
-#[derive(Debug, Clone)]
+impl Default for WebColor {
+    fn default() -> Self {
+        WebColor::Named(NamedColor::Black)
+    }
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct RGBColor {
     pub red: u8,
     pub green: u8,

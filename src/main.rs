@@ -9,7 +9,6 @@ fn main() {
     users_table
         .columns
         .push(Column::new("id".into(), ColumnType::Int));
-
     users_table
         .columns
         .push(Column::new("uuid".into(), ColumnType::Uuid));
