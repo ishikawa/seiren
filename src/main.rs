@@ -1,4 +1,4 @@
-use seiren::{Column, ColumnType, Document, Table};
+use seiren::{Column, ColumnType, Document, Edge, Node, Table};
 
 fn main() {
     let mut doc = Document::new();
@@ -9,6 +9,7 @@ fn main() {
     users_table
         .columns
         .push(Column::new("id".into(), ColumnType::Int));
+
     users_table
         .columns
         .push(Column::new("uuid".into(), ColumnType::Uuid));
@@ -44,6 +45,10 @@ fn main() {
 
     doc.tables.push(users_table);
     doc.tables.push(posts_table);
+    doc.edges.push(Edge::new(
+        Node::Column("posts".into(), "created_by".into()),
+        Node::Column("users".into(), "id".into()),
+    ));
 
     println!("{}", doc.into_svg());
 }

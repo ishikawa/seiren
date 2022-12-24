@@ -4,11 +4,15 @@ use svg::node::element;
 #[derive(Debug, Clone)]
 pub struct Document {
     pub tables: Vec<Table>,
+    pub edges: Vec<Edge>,
 }
 
 impl Document {
     pub fn new() -> Self {
-        Self { tables: vec![] }
+        Self {
+            tables: vec![],
+            edges: vec![],
+        }
     }
 
     pub fn into_svg(&self) -> svg::Document {
@@ -128,12 +132,6 @@ impl Document {
     }
 }
 
-impl From<Document> for svg::Document {
-    fn from(value: Document) -> Self {
-        value.into_svg()
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct Table {
     pub name: String,
@@ -166,6 +164,27 @@ pub struct Column {
 impl Column {
     pub fn new(name: String, r#type: ColumnType) -> Self {
         Self { name, r#type }
+    }
+}
+
+#[derive(Debug, Clone, Hash)]
+pub enum Node {
+    Table(String),
+    Column(String, String),
+}
+
+#[derive(Debug, Clone)]
+pub struct Edge {
+    pub start_node: Node,
+    pub end_node: Node,
+}
+
+impl Edge {
+    pub fn new(from: Node, to: Node) -> Self {
+        Self {
+            start_node: from,
+            end_node: to,
+        }
     }
 }
 
