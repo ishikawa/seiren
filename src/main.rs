@@ -1,7 +1,7 @@
-use seiren::{Column, ColumnType, Document, Edge, Node, Table};
+use seiren::erd::{Column, ColumnType, ERDiagram, Relation, RelationItem, Table};
 
 fn main() {
-    let mut doc = Document::new();
+    let mut diagram = ERDiagram::new();
     let mut users_table = Table::new("users".into());
     let mut posts_table = Table::new("posts".into());
 
@@ -43,12 +43,12 @@ fn main() {
         .columns
         .push(Column::new("created_by".into(), ColumnType::Int));
 
-    doc.tables.push(users_table);
-    doc.tables.push(posts_table);
-    doc.edges.push(Edge::new(
-        Node::Column("posts".into(), "created_by".into()),
-        Node::Column("users".into(), "id".into()),
+    diagram.tables.push(users_table);
+    diagram.tables.push(posts_table);
+    diagram.edges.push(Relation::new(
+        RelationItem::Column("posts".into(), "created_by".into()),
+        RelationItem::Column("users".into(), "id".into()),
     ));
 
-    println!("{}", doc.into_svg());
+    println!("{}", diagram.into_svg());
 }
