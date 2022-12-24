@@ -15,6 +15,10 @@ impl Document {
         }
     }
 
+    pub fn find_table(&self, name: &str) -> Option<&Table> {
+        self.tables.iter().find(|t| t.name() == name)
+    }
+
     pub fn into_svg(&self) -> svg::Document {
         let x = 50;
         let y = 80;
@@ -134,7 +138,7 @@ impl Document {
 
 #[derive(Debug, Clone)]
 pub struct Table {
-    pub name: String,
+    name: String,
     pub columns: Vec<Column>,
 }
 
@@ -144,6 +148,14 @@ impl Table {
             name,
             columns: vec![],
         }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn find_column(&self, name: &str) -> Option<&Column> {
+        self.columns.iter().find(|c| c.name() == name)
     }
 }
 
@@ -157,13 +169,17 @@ pub enum ColumnType {
 
 #[derive(Debug, Clone)]
 pub struct Column {
-    pub name: String,
+    name: String,
     pub r#type: ColumnType,
 }
 
 impl Column {
     pub fn new(name: String, r#type: ColumnType) -> Self {
         Self { name, r#type }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 }
 
@@ -175,8 +191,8 @@ pub enum Node {
 
 #[derive(Debug, Clone)]
 pub struct Edge {
-    pub start_node: Node,
-    pub end_node: Node,
+    start_node: Node,
+    end_node: Node,
 }
 
 impl Edge {
@@ -185,6 +201,14 @@ impl Edge {
             start_node: from,
             end_node: to,
         }
+    }
+
+    pub fn start_node(&self) -> &Node {
+        &self.start_node
+    }
+
+    pub fn end_node(&self) -> &Node {
+        &self.end_node
     }
 }
 
