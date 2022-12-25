@@ -12,6 +12,15 @@ impl Default for WebColor {
     }
 }
 
+impl fmt::Display for WebColor {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            WebColor::RGB(c) => c.fmt(f),
+            WebColor::Named(c) => c.fmt(f),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct RGBColor {
     pub red: u8,

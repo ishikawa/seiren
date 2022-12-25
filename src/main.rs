@@ -1,4 +1,7 @@
+use std::io;
+
 use seiren::{
+    backend::{Backend, SVGBackend},
     erd::{Column, ColumnType, ERDiagram, Relation, RelationItem, Table},
     layout::{LayoutEngine, SimpleLayoutEngine},
 };
@@ -56,7 +59,12 @@ fn main() {
     let engine = SimpleLayoutEngine::new();
 
     engine.layout_nodes(&mut doc);
-    println!("{:?}", doc);
 
-    println!("{}", diagram.into_svg());
+    let backend = SVGBackend::new();
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
+
+    backend
+        .generate(&doc, &mut handle)
+        .expect("cannot generate SVG");
 }
