@@ -49,5 +49,8 @@ fn main() {
         RelationItem::Column("users".into(), "id".into()),
     ));
 
+    let doc = diagram.into_mir();
+    println!("{:?}", doc);
+
     println!("{}", diagram.into_svg());
 }

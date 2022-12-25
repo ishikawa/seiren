@@ -44,7 +44,7 @@ impl ERDiagram {
                 .build()
                 .unwrap();
 
-            let field_id: Vec<_> = table
+            let field_ids: Vec<_> = table
                 .columns
                 .iter()
                 .map(|column| {
@@ -61,7 +61,9 @@ impl ERDiagram {
             let record_id = doc.create_record(record);
             let record_node = doc.get_node_mut(&record_id).unwrap();
 
-            record_node.children.extend(field_id);
+            for field_id in field_ids {
+                record_node.append_child(field_id);
+            }
         }
 
         doc
