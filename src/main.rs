@@ -1,7 +1,13 @@
-use seiren::{Column, ColumnType, Document, Table};
+use std::io;
+
+use seiren::{
+    backend::{Backend, SVGBackend},
+    erd::{Column, ColumnType, ERDiagram, Relation, RelationItem, Table},
+    layout::{LayoutEngine, SimpleLayoutEngine},
+};
 
 fn main() {
-    let mut doc = Document::new();
+    let mut diagram = ERDiagram::new();
     let mut users_table = Table::new("users".into());
     let mut posts_table = Table::new("posts".into());
 
@@ -42,8 +48,23 @@ fn main() {
         .columns
         .push(Column::new("created_by".into(), ColumnType::Int));
 
-    doc.tables.push(users_table);
-    doc.tables.push(posts_table);
+    diagram.tables.push(users_table);
+    diagram.tables.push(posts_table);
+    diagram.edges.push(Relation::new(
+        RelationItem::Column("posts".into(), "created_by".into()),
+        RelationItem::Column("users".into(), "id".into()),
+    ));
 
-    println!("{}", doc.into_svg());
+    let mut doc = diagram.into_mir();
+    let engine = SimpleLayoutEngine::new();
+
+    engine.layout_nodes(&mut doc);
+
+    let backend = SVGBackend::new();
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
+
+    backend
+        .generate(&doc, &mut handle)
+        .expect("cannot generate SVG");
 }
