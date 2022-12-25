@@ -27,7 +27,6 @@ impl fmt::Display for NodeId {
 #[derive(Debug)]
 pub struct Node {
     pub id: NodeId,
-    pub parent_node_id: Option<NodeId>,
     pub origin: Option<Point>,
     pub size: Option<Size>,
     kind: NodeKind,
@@ -39,7 +38,6 @@ impl Node {
         Self {
             id,
             kind,
-            parent_node_id: None,
             origin: None,
             size: None,
             children: vec![],
@@ -61,27 +59,30 @@ impl Node {
 
 #[derive(Debug)]
 pub enum NodeKind {
+    Body(BodyNode),
     Record(RecordNode),
     Field(FieldNode),
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Document {
     nodes: Vec<Node>,
-    children: Vec<NodeId>,
 }
 
 impl Document {
     pub fn new() -> Self {
-        Self::default()
+        let node_id = NodeId(0);
+        let node = Node::new(node_id, NodeKind::Body(BodyNode::default()));
+
+        Self { nodes: vec![node] }
     }
 
-    pub fn children(&self) -> impl ExactSizeIterator<Item = NodeId> + '_ {
-        self.children.iter().copied()
+    pub fn body(&self) -> &Node {
+        self.nodes.get(0).unwrap()
     }
 
-    pub fn append_child(&mut self, node_id: NodeId) {
-        self.children.push(node_id);
+    pub fn body_mut(&mut self) -> &mut Node {
+        self.nodes.get_mut(0).unwrap()
     }
 
     // -- Get a node
@@ -114,6 +115,10 @@ impl Document {
         node_id
     }
 }
+
+#[derive(Debug, Clone, Default, Builder)]
+#[builder(default)]
+pub struct BodyNode {}
 
 #[derive(Debug, Clone, Default, Builder)]
 #[builder(default)]

@@ -27,7 +27,7 @@ impl LayoutEngine for SimpleLayoutEngine {
         let record_space = 80;
 
         // Iterate records
-        let child_id_vec = doc.children().collect::<Vec<_>>();
+        let child_id_vec = doc.body().children().collect::<Vec<_>>();
 
         for (record_index, child_id) in child_id_vec.iter().enumerate() {
             let Some(record_node) = doc.get_node_mut(child_id) else { continue };

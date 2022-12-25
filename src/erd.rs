@@ -64,7 +64,8 @@ impl ERDiagram {
             for field_id in field_ids {
                 record_node.append_child(field_id);
             }
-            doc.append_child(record_id);
+
+            doc.body_mut().append_child(record_id);
         }
 
         doc
