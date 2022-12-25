@@ -1,6 +1,9 @@
 use svg;
 use svg::node::element;
 
+use crate::color::{NamedColor, RGBColor, WebColor};
+use crate::mir;
+
 #[derive(Debug, Clone)]
 pub struct ERDiagram {
     pub tables: Vec<Table>,
@@ -17,6 +20,51 @@ impl ERDiagram {
 
     pub fn find_table(&self, name: &str) -> Option<&Table> {
         self.tables.iter().find(|t| t.name() == name)
+    }
+
+    pub fn into_mir(&self) -> mir::Document {
+        let light_gray_color = WebColor::RGB(RGBColor::new(73, 73, 73));
+        let table_bg_color = WebColor::RGB(RGBColor::new(33, 33, 33));
+        let text_color = WebColor::Named(NamedColor::White);
+        let mut doc = mir::Document::new();
+
+        for table in self.tables.iter() {
+            let header = mir::RecordNodeHeaderBuilder::default()
+                .title(table.name())
+                .text_color(text_color.clone())
+                .bg_color(light_gray_color.clone())
+                .build()
+                .unwrap();
+
+            let record = mir::RecordNodeBuilder::default()
+                .header(header)
+                .rounded(true)
+                .bg_color(table_bg_color.clone())
+                .border_color(light_gray_color.clone())
+                .build()
+                .unwrap();
+
+            let field_id: Vec<_> = table
+                .columns
+                .iter()
+                .map(|column| {
+                    let field = mir::FieldNodeBuilder::default()
+                        .name(column.name())
+                        .text_color(text_color.clone())
+                        .build()
+                        .unwrap();
+
+                    doc.create_field(field)
+                })
+                .collect();
+
+            let record_id = doc.create_record(record);
+            let record_node = doc.get_node_mut(&record_id).unwrap();
+
+            record_node.children.extend(field_id);
+        }
+
+        doc
     }
 
     pub fn into_svg(&self) -> svg::Document {

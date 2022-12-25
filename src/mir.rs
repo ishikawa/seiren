@@ -89,6 +89,7 @@ pub struct Node {
     pub origin: Option<Point>,
     pub size: Option<Size>,
     pub kind: NodeKind,
+    pub children: Vec<NodeId>,
 }
 
 impl Node {
@@ -99,6 +100,7 @@ impl Node {
             parent_node_id: None,
             origin: None,
             size: None,
+            children: vec![],
         }
     }
 }
@@ -158,8 +160,6 @@ pub struct RecordNode {
     pub bg_color: WebColor,
     #[builder(setter(strip_option))]
     pub header: Option<RecordNodeHeader>,
-    #[builder(setter(each(name = "field")))]
-    pub fields: Vec<NodeId>,
 }
 
 #[derive(Debug, Clone, Default, Builder)]
