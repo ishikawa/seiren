@@ -1,4 +1,7 @@
-use seiren::erd::{Column, ColumnType, ERDiagram, Relation, RelationItem, Table};
+use seiren::{
+    erd::{Column, ColumnType, ERDiagram, Relation, RelationItem, Table},
+    layout::{LayoutEngine, SimpleLayoutEngine},
+};
 
 fn main() {
     let mut diagram = ERDiagram::new();
@@ -49,7 +52,10 @@ fn main() {
         RelationItem::Column("users".into(), "id".into()),
     ));
 
-    let doc = diagram.into_mir();
+    let mut doc = diagram.into_mir();
+    let engine = SimpleLayoutEngine::new();
+
+    engine.layout_nodes(&mut doc);
     println!("{:?}", doc);
 
     println!("{}", diagram.into_svg());

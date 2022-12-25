@@ -30,7 +30,7 @@ pub struct Node {
     pub parent_node_id: Option<NodeId>,
     pub origin: Option<Point>,
     pub size: Option<Size>,
-    pub kind: NodeKind,
+    kind: NodeKind,
     children: Vec<NodeId>,
 }
 
@@ -46,8 +46,12 @@ impl Node {
         }
     }
 
-    pub fn children(&self) -> impl ExactSizeIterator + '_ {
-        self.children.iter()
+    pub fn kind(&self) -> &NodeKind {
+        &self.kind
+    }
+
+    pub fn children(&self) -> impl ExactSizeIterator<Item = NodeId> + '_ {
+        self.children.iter().copied()
     }
 
     pub fn append_child(&mut self, node_id: NodeId) {
@@ -64,11 +68,20 @@ pub enum NodeKind {
 #[derive(Debug, Default)]
 pub struct Document {
     nodes: Vec<Node>,
+    children: Vec<NodeId>,
 }
 
 impl Document {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn children(&self) -> impl ExactSizeIterator<Item = NodeId> + '_ {
+        self.children.iter().copied()
+    }
+
+    pub fn append_child(&mut self, node_id: NodeId) {
+        self.children.push(node_id);
     }
 
     // -- Get a node

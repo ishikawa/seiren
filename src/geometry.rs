@@ -12,6 +12,18 @@ pub struct Length {
     pub unit: Option<LengthUnit>,
 }
 
+impl Length {
+    pub fn new(value: f32, unit: Option<LengthUnit>) -> Self {
+        Self { value, unit }
+    }
+}
+
+impl From<i32> for Length {
+    fn from(value: i32) -> Self {
+        Self::new(value as f32, None)
+    }
+}
+
 impl fmt::Display for Length {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:.1}", self.value)?;
