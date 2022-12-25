@@ -37,8 +37,45 @@ impl Size {
     }
 }
 
+#[derive(Debug)]
+pub enum Node {
+    Record(RecordNode),
+    Field(FieldNode),
+}
+
+pub struct NodeId(usize);
+
+#[derive(Debug, Default)]
+pub struct Document {
+    nodes: Vec<Node>,
+}
+
+impl Document {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn get_node(&self, node_id: &NodeId) -> Option<&Node> {
+        self.nodes.get(node_id.0)
+    }
+
+    pub fn add_record(&mut self, field: RecordNode) -> NodeId {
+        let index = self.nodes.len();
+
+        self.nodes.push(Node::Record(field));
+        NodeId(index)
+    }
+
+    pub fn add_field(&mut self, field: FieldNode) -> NodeId {
+        let index = self.nodes.len();
+
+        self.nodes.push(Node::Field(field));
+        NodeId(index)
+    }
+}
+
 #[derive(Debug, Clone, Builder)]
-pub struct Record {
+pub struct RecordNode {
     #[builder(default)]
     pub origin: Point,
     #[builder(default)]
@@ -52,7 +89,7 @@ pub struct Record {
     #[builder(setter(strip_option), default)]
     pub header: Option<RecordHeader>,
     #[builder(setter(each(name = "field")), default)]
-    pub fields: Vec<RecordField>,
+    pub fields: Vec<FieldNode>,
 }
 
 #[derive(Debug, Clone, Default, Builder)]
@@ -66,7 +103,7 @@ pub struct RecordHeader {
 
 #[derive(Debug, Clone, Default, Builder)]
 #[builder(default)]
-pub struct RecordField {
+pub struct FieldNode {
     #[builder(setter(into))]
     pub name: String,
     #[builder(setter(into))]
@@ -80,36 +117,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn build_record() {
-        let record = RecordBuilder::default().build().unwrap();
+    fn build_doc() {
+        let mut doc = Document::new();
 
-        assert_eq!(record.origin, Point::default());
-        assert_eq!(record.size, Size::default());
+        let field = FieldNodeBuilder::default().name("id").build().unwrap();
 
-        // 2
-        let header = RecordHeaderBuilder::default()
-            .title("users")
-            .build()
-            .unwrap();
-        let field1 = RecordFieldBuilder::default()
-            .name("id")
-            .r#type("int")
-            .build()
-            .unwrap();
-        let field2 = RecordFieldBuilder::default()
-            .name("uuid")
-            .r#type("uuid")
-            .build()
-            .unwrap();
+        let node_id = doc.add_field(field);
 
-        let record = RecordBuilder::default()
-            .header(header)
-            .field(field1)
-            .field(field2)
-            .build()
-            .unwrap();
+        let node = doc.get_node(&node_id);
 
-        assert_eq!(record.header.unwrap().title, "users");
-        assert_eq!(record.fields.len(), 2);
+        assert!(node.is_some());
+
+        let Node::Field(field) = node.unwrap() else { panic!() };
+
+        assert_eq!(field.name, "id");
     }
 }
