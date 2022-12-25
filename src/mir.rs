@@ -150,27 +150,21 @@ impl Document {
     }
 }
 
-#[derive(Debug, Clone, Builder)]
+#[derive(Debug, Clone, Default, Builder)]
+#[builder(default)]
 pub struct RecordNode {
-    #[builder(default)]
-    pub origin: Point,
-    #[builder(default)]
-    pub size: Size,
-    #[builder(default)]
     pub rounded: bool,
-    #[builder(default)]
     pub border_color: WebColor,
-    #[builder(default)]
     pub bg_color: WebColor,
-    #[builder(setter(strip_option), default)]
-    pub header: Option<RecordHeader>,
-    #[builder(setter(each(name = "field")), default)]
-    pub fields: Vec<FieldNode>,
+    #[builder(setter(strip_option))]
+    pub header: Option<RecordNodeHeader>,
+    #[builder(setter(each(name = "field")))]
+    pub fields: Vec<NodeId>,
 }
 
 #[derive(Debug, Clone, Default, Builder)]
 #[builder(default)]
-pub struct RecordHeader {
+pub struct RecordNodeHeader {
     #[builder(setter(into))]
     pub title: String,
     pub text_color: WebColor,
