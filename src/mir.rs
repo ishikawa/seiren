@@ -59,6 +59,10 @@ impl Document {
         self.nodes.get(node_id.0)
     }
 
+    pub fn get_node_mut(&mut self, node_id: &NodeId) -> Option<&mut Node> {
+        self.nodes.get_mut(node_id.0)
+    }
+
     pub fn add_record(&mut self, field: RecordNode) -> NodeId {
         let index = self.nodes.len();
 
@@ -131,5 +135,18 @@ mod tests {
         let Node::Field(field) = node.unwrap() else { panic!() };
 
         assert_eq!(field.name, "id");
+
+        // mutate
+        {
+            let node = doc.get_node_mut(&node_id);
+            let Node::Field(field) = node.unwrap() else { panic!() };
+
+            field.name = "uuid".to_string();
+        }
+
+        let node = doc.get_node(&node_id);
+        let Node::Field(field) = node.unwrap() else { panic!() };
+
+        assert_eq!(field.name, "uuid");
     }
 }
