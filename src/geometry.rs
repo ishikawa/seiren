@@ -1,7 +1,7 @@
 /// https://developer.mozilla.org/en-US/docs/Web/SVG/Content_type#length
 ///
 /// length used in SVG:
-/// ```
+/// ```ignore
 /// length ::= number ("em" | "ex" | "px" | "in" | "cm" | "mm" | "pt" | "pc" | "%")?
 /// ```
 use std::fmt;
