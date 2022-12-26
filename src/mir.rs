@@ -22,6 +22,7 @@ pub struct NodeId(usize);
 #[derive(Debug)]
 pub struct Node {
     pub id: NodeId,
+    /// The origin (absolute in the global coordination)
     pub origin: Option<Point>,
     pub size: Option<Size>,
     kind: NodeKind,
@@ -50,6 +51,17 @@ impl Node {
     pub fn append_child(&mut self, node_id: NodeId) {
         self.children.push(node_id);
     }
+
+    // Geometry
+
+    pub fn min_x(&self) -> Option<f32> {
+        self.origin.map(|pt| pt.x)
+    }
+
+    pub fn max_x(&self) -> Option<f32> {
+        self.origin
+            .and_then(|pt| self.size.map(|size| size.width + pt.x))
+    }
 }
 
 #[derive(Debug)]
@@ -62,6 +74,7 @@ pub enum NodeKind {
 #[derive(Debug)]
 pub struct Document {
     nodes: Vec<Node>,
+    edges: Vec<Edge>,
 }
 
 impl Document {
@@ -69,7 +82,10 @@ impl Document {
         let node_id = NodeId(0);
         let node = Node::new(node_id, NodeKind::Body(BodyNode::default()));
 
-        Self { nodes: vec![node] }
+        Self {
+            nodes: vec![node],
+            edges: vec![],
+        }
     }
 
     pub fn body(&self) -> &Node {
@@ -108,6 +124,16 @@ impl Document {
 
         self.nodes.push(node);
         node_id
+    }
+
+    // --- Edge
+
+    pub fn edges(&self) -> impl ExactSizeIterator<Item = &Edge> {
+        self.edges.iter()
+    }
+
+    pub fn append_edge(&mut self, edge: Edge) {
+        self.edges.push(edge);
     }
 }
 
@@ -168,6 +194,22 @@ pub enum FontWeight {
     Lighter,
     #[display(fmt = "bolder")]
     Bolder,
+}
+
+// --- Edge
+#[derive(Debug, PartialEq, Eq)]
+pub struct Edge {
+    pub start_node_id: NodeId,
+    pub end_node_id: NodeId,
+}
+
+impl Edge {
+    pub fn new(start_node: NodeId, end_node: NodeId) -> Self {
+        Self {
+            start_node_id: start_node,
+            end_node_id: end_node,
+        }
+    }
 }
 
 #[cfg(test)]

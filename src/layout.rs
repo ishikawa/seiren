@@ -41,14 +41,15 @@ impl LayoutEngine for SimpleLayoutEngine {
             record_node.size = Some(Size::new(record_width.into(), record_height.into()));
 
             // children
+            let base_y = y;
             let field_id_vec = record_node.children().collect::<Vec<_>>();
 
             for (field_index, field_node_id) in field_id_vec.iter().enumerate() {
-                let y = line_height * field_index as f32;
+                let y = base_y + line_height * field_index as f32;
                 let Some(field_node) = doc.get_node_mut(field_node_id) else { continue };
                 let NodeKind::Field(_) = field_node.kind() else  { continue };
 
-                field_node.origin = Some(Point::new(0.0, y));
+                field_node.origin = Some(Point::new(x, y));
                 field_node.size = Some(Size::new(record_width, line_height));
             }
         }

@@ -1,17 +1,19 @@
+//! ER diagram AST
 use crate::color::{NamedColor, RGBColor, WebColor};
 use crate::mir;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct ERDiagram {
     pub tables: Vec<Table>,
-    pub edges: Vec<Relation>,
+    pub relations: Vec<Relation>,
 }
 
 impl ERDiagram {
     pub fn new() -> Self {
         Self {
             tables: vec![],
-            edges: vec![],
+            relations: vec![],
         }
     }
 
@@ -25,6 +27,9 @@ impl ERDiagram {
         let table_bg_color = WebColor::RGB(RGBColor::new(33, 33, 33));
         let text_color = WebColor::Named(NamedColor::White);
         let mut doc = mir::Document::new();
+
+        // node path (e.g. ["users", "id"]) -> node ID
+        let mut node_paths: HashMap<RelationPath, mir::NodeId> = HashMap::new();
 
         for table in self.tables.iter() {
             let header_node_id = {
@@ -69,11 +74,19 @@ impl ERDiagram {
                         .build()
                         .unwrap();
 
-                    doc.create_field(field)
+                    let node_id = doc.create_field(field);
+
+                    node_paths.insert(
+                        RelationPath::Column(table.name().into(), column.name().into()),
+                        node_id,
+                    );
+                    node_id
                 })
                 .collect();
 
             let record_id = doc.create_record(record);
+            node_paths.insert(RelationPath::Table(table.name().into()), record_id);
+
             let record_node = doc.get_node_mut(&record_id).unwrap();
 
             record_node.append_child(header_node_id);
@@ -82,6 +95,14 @@ impl ERDiagram {
             }
 
             doc.body_mut().append_child(record_id);
+        }
+
+        // Translates relations to edges.
+        for relation in self.relations.iter() {
+            let Some(start_node_id) = node_paths.get(relation.start_path()) else { continue };
+            let Some(end_node_id) = node_paths.get(relation.end_path()) else { continue };
+
+            doc.append_edge(mir::Edge::new(*start_node_id, *end_node_id));
         }
 
         doc
@@ -111,7 +132,7 @@ impl Table {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum ColumnType {
     Int,
     Uuid,
@@ -135,32 +156,32 @@ impl Column {
     }
 }
 
-#[derive(Debug, Clone, Hash)]
-pub enum RelationItem {
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum RelationPath {
     Table(String),
     Column(String, String),
 }
 
 #[derive(Debug, Clone)]
 pub struct Relation {
-    start_node: RelationItem,
-    end_node: RelationItem,
+    start_path: RelationPath,
+    end_path: RelationPath,
 }
 
 impl Relation {
-    pub fn new(from: RelationItem, to: RelationItem) -> Self {
+    pub fn new(from: RelationPath, to: RelationPath) -> Self {
         Self {
-            start_node: from,
-            end_node: to,
+            start_path: from,
+            end_path: to,
         }
     }
 
-    pub fn start_node(&self) -> &RelationItem {
-        &self.start_node
+    pub fn start_path(&self) -> &RelationPath {
+        &self.start_path
     }
 
-    pub fn end_node(&self) -> &RelationItem {
-        &self.end_node
+    pub fn end_path(&self) -> &RelationPath {
+        &self.end_path
     }
 }
 
