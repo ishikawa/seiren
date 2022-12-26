@@ -50,6 +50,17 @@ impl Node {
     pub fn append_child(&mut self, node_id: NodeId) {
         self.children.push(node_id);
     }
+
+    // Geometry
+
+    pub fn min_x(&self) -> Option<f32> {
+        self.origin.map(|pt| pt.x)
+    }
+
+    pub fn max_x(&self) -> Option<f32> {
+        self.origin
+            .and_then(|pt| self.size.map(|size| size.width + pt.x))
+    }
 }
 
 #[derive(Debug)]
@@ -187,15 +198,15 @@ pub enum FontWeight {
 // --- Edge
 #[derive(Debug, PartialEq, Eq)]
 pub struct Edge {
-    pub start_node: NodeId,
-    pub end_node: NodeId,
+    pub start_node_id: NodeId,
+    pub end_node_id: NodeId,
 }
 
 impl Edge {
     pub fn new(start_node: NodeId, end_node: NodeId) -> Self {
         Self {
-            start_node,
-            end_node,
+            start_node_id: start_node,
+            end_node_id: end_node,
         }
     }
 }

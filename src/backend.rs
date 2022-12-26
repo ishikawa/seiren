@@ -65,7 +65,7 @@ impl Backend for SVGBackend {
         }
         svg_doc = svg_doc.add(svg_defs);
 
-        // -- Generate shapes
+        // -- Draw shapes
         for (record_index, child_id) in doc.body().children().enumerate() {
             let Some(record_node) = doc.get_node(&child_id) else { continue };
             let NodeKind::Record(record) = record_node.kind() else  { continue };
@@ -148,7 +148,56 @@ impl Backend for SVGBackend {
             }
         }
 
+        // -- Draw edges
+        for edge in doc.edges() {
+            let Some(start_node) = doc.get_node(&edge.start_node_id) else { continue };
+            let Some(end_node) = doc.get_node(&edge.end_node_id) else { continue };
+            let start_circle = self.edge_end_circle(start_node, end_node)?;
+            let end_circle = self.edge_end_circle(end_node, start_node)?;
+
+            svg_doc = svg_doc.add(start_circle).add(end_circle);
+        }
+
         writer.write_all(svg_doc.to_string().as_bytes())?;
         Ok(())
+    }
+}
+
+impl SVGBackend {
+    fn edge_end_circle(
+        &self,
+        node: &mir::Node,
+        target_node: &mir::Node,
+    ) -> Result<element::Circle, BackendError> {
+        let r = 6;
+        let stroke_width = 2;
+        let color = WebColor::RGB(RGBColor {
+            red: 136,
+            green: 136,
+            blue: 136,
+        });
+        let background_color = WebColor::RGB(RGBColor::new(28, 28, 28));
+
+        let (Some(origin), Some(size)) = (node.origin, node.size) else {
+            return Err(BackendError::InvalidLayout(node.id))
+        };
+        let (Some(min_x), Some(max_x), Some(target_min_x), Some(_target_max_x)) = (
+            node.min_x(),
+            node.max_x(),
+            target_node.min_x(),
+            target_node.max_x()) else { return Err(BackendError::InvalidLayout(node.id)) };
+
+        let is_left_side = target_min_x < min_x;
+
+        let cx = if is_left_side { min_x } else { max_x };
+        let cy = origin.y + size.height / 2.0;
+
+        Ok(element::Circle::new()
+            .set("cx", cx)
+            .set("cy", cy)
+            .set("r", r)
+            .set("stroke", color.to_string())
+            .set("stroke-width", stroke_width)
+            .set("fill", background_color.to_string()))
     }
 }
