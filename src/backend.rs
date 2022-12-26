@@ -25,10 +25,9 @@ impl SVGBackend {
 impl Backend for SVGBackend {
     fn generate(&self, doc: &mir::Document, writer: &mut impl Write) -> Result<(), BackendError> {
         let px = 12f32;
-        let line_height = 35f32;
         let text_baseline = 22f32;
         let border_radius = 6f32;
-        let header_clip_path_id_prefix = "header-clip-path-";
+        let record_clip_path_id_prefix = "record-clip-path-";
         let background_color = WebColor::RGB(RGBColor::new(28, 28, 28));
 
         // -- Build a SVG document
@@ -43,29 +42,24 @@ impl Backend for SVGBackend {
 
         svg_doc = svg_doc.add(background_rect);
 
-        // -- Generate clip paths in defs
+        // -- Generate clip paths for record shapes.
         for (record_index, child_id) in doc.body().children().enumerate() {
             let Some(record_node) = doc.get_node(&child_id) else { continue };
-            let NodeKind::Record(record) = record_node.kind() else  { continue };
+            let NodeKind::Record(_) = record_node.kind() else  { continue };
 
-            if record.header.is_none() {
-                continue;
-            }
+            let Some(record_origin) = record_node.origin else { return Err(BackendError::InvalidLayout(child_id)) };
+            let Some(record_size) = record_node.size else { return Err(BackendError::InvalidLayout(child_id)) };
 
-            let Some(origin) = record_node.origin else { return Err(BackendError::InvalidLayout(child_id)) };
-            let Some(size) = record_node.size else { return Err(BackendError::InvalidLayout(child_id)) };
+            let clip_path_rect = element::Rectangle::new()
+                .set("x", record_origin.x)
+                .set("y", record_origin.y)
+                .set("width", record_size.width)
+                .set("height", record_size.height)
+                .set("rx", border_radius)
+                .set("ry", border_radius);
 
-            // header clip path
-            let rect = element::Rectangle::new()
-                .set("x", origin.x.to_string())
-                .set("y", origin.y.to_string())
-                .set("width", size.width.to_string())
-                .set("height", line_height);
-
-            let header_clip_path_id = format!("{}{}", header_clip_path_id_prefix, record_index);
-            let clip_path = element::ClipPath::new()
-                .set("id", header_clip_path_id)
-                .add(rect);
+            let id = format!("{}{}", record_clip_path_id_prefix, record_index);
+            let clip_path = element::ClipPath::new().set("id", id).add(clip_path_rect);
 
             svg_defs = svg_defs.add(clip_path);
         }
@@ -75,73 +69,81 @@ impl Backend for SVGBackend {
         for (record_index, child_id) in doc.body().children().enumerate() {
             let Some(record_node) = doc.get_node(&child_id) else { continue };
             let NodeKind::Record(record) = record_node.kind() else  { continue };
-            let Some(origin) = record_node.origin else { return Err(BackendError::InvalidLayout(child_id)) };
-            let Some(size) = record_node.size else { return Err(BackendError::InvalidLayout(child_id)) };
+            let Some(record_origin) = record_node.origin else { return Err(BackendError::InvalidLayout(child_id)) };
+            let Some(record_size) = record_node.size else { return Err(BackendError::InvalidLayout(child_id)) };
 
             // background
-            let table_bg = element::Rectangle::new()
-                .set("x", origin.x.to_string())
-                .set("y", origin.y.to_string())
-                .set("width", size.width.to_string())
-                .set("height", size.height.to_string())
+            let mut table_bg = element::Rectangle::new()
+                .set("x", record_origin.x)
+                .set("y", record_origin.y)
+                .set("width", record_size.width)
+                .set("height", record_size.height)
                 .set("rx", border_radius)
-                .set("ry", border_radius)
-                .set("stroke", record.border_color.to_string())
-                .set("fill", record.bg_color.to_string());
+                .set("ry", border_radius);
+            if let Some(border_color) = &record.border_color {
+                table_bg = table_bg.set("stroke", border_color.to_string());
+            }
+            if let Some(bg_color) = &record.bg_color {
+                table_bg = table_bg.set("fill", bg_color.to_string());
+            }
             svg_doc = svg_doc.add(table_bg);
 
-            // header
-            if let Some(header) = &record.header {
-                let header_clip_path_id = format!("{}{}", header_clip_path_id_prefix, record_index);
-                let header_bg = element::Rectangle::new()
-                    .set("x", origin.x.to_string())
-                    .set("y", origin.y.to_string())
-                    .set("width", size.width.to_string())
-                    .set("height", size.height.to_string())
-                    .set("rx", border_radius)
-                    .set("ry", border_radius)
-                    .set("stroke", header.bg_color.to_string())
-                    .set("fill", header.bg_color.to_string())
-                    .set("clip-path", format!("url(#{})", header_clip_path_id));
-                let header_text = element::Text::new()
-                    .set("x", origin.x + px)
-                    .set("y", origin.y + text_baseline)
-                    .set("fill", header.text_color.to_string())
-                    .set("font-weight", "bold")
-                    .set("font-family", "Monaco,Lucida Console,monospace")
-                    .add(svg::node::Text::new(header.title.clone()));
-                svg_doc = svg_doc.add(header_bg).add(header_text);
-            }
-
             // children
+            let record_clip_path_id = format!("{}{}", record_clip_path_id_prefix, record_index);
+
             for (field_index, field_node_id) in record_node.children().enumerate() {
                 let Some(field_node) = doc.get_node(&field_node_id) else { continue };
                 let NodeKind::Field(field) = field_node.kind() else  { continue };
                 let Some(field_origin) = field_node.origin else { return Err(BackendError::InvalidLayout(field_node_id)) };
                 let Some(field_size) = field_node.size else { return Err(BackendError::InvalidLayout(field_node_id)) };
 
-                let x = origin.x + field_origin.x;
-                let y = origin.y + field_origin.y;
+                let x = record_origin.x + field_origin.x;
+                let y = record_origin.y + field_origin.y;
+
+                // background color: we use a clip path to adjust border radius.
+                if let Some(bg_color) = &field.bg_color {
+                    let field_bg = element::Rectangle::new()
+                        .set("x", x)
+                        .set("y", y)
+                        .set("width", field_size.width)
+                        .set("height", field_size.height)
+                        .set("fill", bg_color.to_string())
+                        .set("clip-path", format!("url(#{})", record_clip_path_id));
+                    svg_doc = svg_doc.add(field_bg);
+                }
 
                 // border
                 if field_index > 0 {
-                    let line = element::Line::new()
+                    let mut line = element::Line::new()
                         .set("x1", x)
                         .set("x2", x + field_size.width)
                         .set("y1", y)
-                        .set("y2", y)
-                        .set("stroke", record.border_color.to_string())
-                        .set("stroke-width", 1);
+                        .set("y2", y);
+                    if let Some(border_color) = &field.border_color {
+                        line = line
+                            .set("stroke", border_color.to_string())
+                            .set("stroke-width", 1);
+                    }
                     svg_doc = svg_doc.add(line);
                 }
 
-                let label = element::Text::new()
+                // text
+                let span = &field.name;
+                let mut label = element::Text::new()
                     .set("x", x + px)
                     .set("y", y + text_baseline)
-                    .set("fill", field.text_color.to_string())
-                    .set("font-weight", "lighter")
-                    .set("font-family", "Courier New,monospace")
-                    .add(svg::node::Text::new(field.name.clone()));
+                    .add(svg::node::Text::new(span.text.clone()));
+
+                if let Some(text_color) = &span.color {
+                    label = label.set("fill", text_color.to_string());
+                }
+                if let Some(font_family) = &span.font_family {
+                    label = label.set("font-family", font_family.to_string());
+                }
+                if let Some(font_weight) = &span.font_weight {
+                    label = label.set("font-weight", font_weight.to_string());
+                }
+
                 svg_doc = svg_doc.add(label);
             }
         }

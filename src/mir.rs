@@ -13,16 +13,11 @@
 use crate::color::WebColor;
 use crate::geometry::{Point, Size};
 use derive_builder::Builder;
-use std::fmt;
+use derive_more::Display;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
+#[display(fmt = "{}", _0)]
 pub struct NodeId(usize);
-
-impl fmt::Display for NodeId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
 
 #[derive(Debug)]
 pub struct Node {
@@ -124,30 +119,55 @@ pub struct BodyNode {}
 #[builder(default)]
 pub struct RecordNode {
     pub rounded: bool,
-    pub border_color: WebColor,
-    pub bg_color: WebColor,
     #[builder(setter(strip_option))]
-    pub header: Option<RecordNodeHeader>,
-}
-
-#[derive(Debug, Clone, Default, Builder)]
-#[builder(default)]
-pub struct RecordNodeHeader {
-    #[builder(setter(into))]
-    pub title: String,
-    pub text_color: WebColor,
-    pub bg_color: WebColor,
+    pub bg_color: Option<WebColor>,
+    #[builder(setter(strip_option))]
+    pub border_color: Option<WebColor>,
 }
 
 #[derive(Debug, Clone, Default, Builder)]
 #[builder(default)]
 pub struct FieldNode {
+    pub name: TextSpan,
+    #[builder(setter(strip_option))]
+    pub bg_color: Option<WebColor>,
+    #[builder(setter(strip_option))]
+    pub border_color: Option<WebColor>,
+    #[builder(setter(strip_option))]
+    pub r#type: Option<TextSpan>,
+}
+
+#[derive(Debug, Clone, Default, Builder)]
+#[builder(default)]
+pub struct TextSpan {
     #[builder(setter(into))]
-    pub name: String,
-    #[builder(setter(into))]
-    pub r#type: String,
-    pub text_color: WebColor,
-    pub type_color: WebColor,
+    pub text: String,
+    #[builder(setter(strip_option))]
+    pub color: Option<WebColor>,
+    #[builder(setter(strip_option))]
+    pub font_family: Option<FontFamily>,
+    #[builder(setter(strip_option))]
+    pub font_weight: Option<FontWeight>,
+}
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Display)]
+pub enum FontFamily {
+    #[display(fmt = "Monaco,Lucida Console,monospace")]
+    Monospace1,
+    #[display(fmt = "Courier New,monospace")]
+    Monospace2,
+}
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Display)]
+pub enum FontWeight {
+    #[display(fmt = "normal")]
+    Normal,
+    #[display(fmt = "bold")]
+    Bold,
+    #[display(fmt = "lighter")]
+    Lighter,
+    #[display(fmt = "bolder")]
+    Bolder,
 }
 
 #[cfg(test)]
@@ -158,7 +178,8 @@ mod tests {
     fn build_doc() {
         let mut doc = Document::new();
 
-        let field = FieldNodeBuilder::default().name("id").build().unwrap();
+        let name = TextSpanBuilder::default().text("id").build().unwrap();
+        let field = FieldNodeBuilder::default().name(name).build().unwrap();
 
         let node_id = doc.create_field(field);
 
@@ -168,19 +189,19 @@ mod tests {
         let node = node.unwrap();
         let NodeKind::Field(field) = &node.kind else { panic!() };
 
-        assert_eq!(field.name, "id");
+        assert_eq!(field.name.text, "id");
 
         // mutate
         {
             let node = doc.get_node_mut(&node_id).unwrap();
             let NodeKind::Field(field) = &mut node.kind else { panic!() };
 
-            field.name = "uuid".to_string();
+            field.name.text = "uuid".to_string();
         }
 
         let node = doc.get_node(&node_id).unwrap();
         let NodeKind::Field(field) = &node.kind else { panic!() };
 
-        assert_eq!(field.name, "uuid");
+        assert_eq!(field.name.text, "uuid");
     }
 }
