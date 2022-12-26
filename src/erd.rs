@@ -21,23 +21,33 @@ impl ERDiagram {
 
     pub fn into_mir(&self) -> mir::Document {
         let light_gray_color = WebColor::RGB(RGBColor::new(73, 73, 73));
+        let table_border_color = light_gray_color.clone();
         let table_bg_color = WebColor::RGB(RGBColor::new(33, 33, 33));
         let text_color = WebColor::Named(NamedColor::White);
         let mut doc = mir::Document::new();
 
         for table in self.tables.iter() {
-            let header = mir::RecordNodeHeaderBuilder::default()
-                .title(table.name())
-                .text_color(text_color.clone())
-                .bg_color(light_gray_color.clone())
-                .build()
-                .unwrap();
+            let header_node_id = {
+                let name = mir::TextSpanBuilder::default()
+                    .text(table.name())
+                    .color(text_color.clone())
+                    .font_family(mir::FontFamily::Monospace1)
+                    .font_weight(mir::FontWeight::Bold)
+                    .build()
+                    .unwrap();
+                let field = mir::FieldNodeBuilder::default()
+                    .name(name)
+                    .bg_color(light_gray_color.clone())
+                    .build()
+                    .unwrap();
+
+                doc.create_field(field)
+            };
 
             let record = mir::RecordNodeBuilder::default()
-                .header(header)
                 .rounded(true)
                 .bg_color(table_bg_color.clone())
-                .border_color(light_gray_color.clone())
+                .border_color(table_border_color.clone())
                 .build()
                 .unwrap();
 
@@ -45,9 +55,17 @@ impl ERDiagram {
                 .columns
                 .iter()
                 .map(|column| {
+                    let name = mir::TextSpanBuilder::default()
+                        .text(column.name())
+                        .color(text_color.clone())
+                        .font_family(mir::FontFamily::Monospace2)
+                        .font_weight(mir::FontWeight::Lighter)
+                        .build()
+                        .unwrap();
+
                     let field = mir::FieldNodeBuilder::default()
-                        .name(column.name())
-                        .text_color(text_color.clone())
+                        .name(name)
+                        .border_color(table_border_color.clone())
                         .build()
                         .unwrap();
 
@@ -58,6 +76,7 @@ impl ERDiagram {
             let record_id = doc.create_record(record);
             let record_node = doc.get_node_mut(&record_id).unwrap();
 
+            record_node.append_child(header_node_id);
             for field_id in field_ids {
                 record_node.append_child(field_id);
             }
