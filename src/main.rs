@@ -2,7 +2,7 @@ use std::io;
 
 use seiren::{
     backend::{Backend, SVGBackend},
-    erd::{Column, ColumnType, ERDiagram, Relation, RelationItem, Table},
+    erd::{Column, ColumnType, ERDiagram, Relation, RelationPath, Table},
     layout::{LayoutEngine, SimpleLayoutEngine},
 };
 
@@ -50,9 +50,9 @@ fn main() {
 
     diagram.tables.push(users_table);
     diagram.tables.push(posts_table);
-    diagram.edges.push(Relation::new(
-        RelationItem::Column("posts".into(), "created_by".into()),
-        RelationItem::Column("users".into(), "id".into()),
+    diagram.relations.push(Relation::new(
+        RelationPath::Column("posts".into(), "created_by".into()),
+        RelationPath::Column("users".into(), "id".into()),
     ));
 
     let mut doc = diagram.into_mir();
