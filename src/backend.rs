@@ -152,10 +152,10 @@ impl Backend for SVGBackend {
         for edge in doc.edges() {
             let Some(start_node) = doc.get_node(&edge.start_node_id) else { continue };
             let Some(end_node) = doc.get_node(&edge.end_node_id) else { continue };
-            let start_circle = self.edge_end_circle(start_node, end_node)?;
-            let end_circle = self.edge_end_circle(end_node, start_node)?;
 
-            svg_doc = svg_doc.add(start_circle).add(end_circle);
+            let (edge_path, start_circle, end_circle) = self.edge_path(start_node, end_node)?;
+
+            svg_doc = svg_doc.add(edge_path).add(start_circle).add(end_circle);
         }
 
         writer.write_all(svg_doc.to_string().as_bytes())?;
@@ -164,40 +164,77 @@ impl Backend for SVGBackend {
 }
 
 impl SVGBackend {
-    fn edge_end_circle(
+    fn edge_path(
         &self,
-        node: &mir::Node,
-        target_node: &mir::Node,
-    ) -> Result<element::Circle, BackendError> {
+        start_node: &mir::Node,
+        end_node: &mir::Node,
+    ) -> Result<(element::Path, element::Circle, element::Circle), BackendError> {
         let r = 4;
         let stroke_width = 2;
-        let color = WebColor::RGB(RGBColor {
+        let stroke_color = WebColor::RGB(RGBColor {
             red: 136,
             green: 136,
             blue: 136,
         });
         let background_color = WebColor::RGB(RGBColor::new(28, 28, 28));
 
-        let (Some(origin), Some(size)) = (node.origin, node.size) else {
-            return Err(BackendError::InvalidLayout(node.id))
+        let (Some(start_origin), Some(start_size)) = (start_node.origin, start_node.size) else {
+            return Err(BackendError::InvalidLayout(start_node.id))
         };
-        let (Some(min_x), Some(max_x), Some(target_min_x), Some(_target_max_x)) = (
-            node.min_x(),
-            node.max_x(),
-            target_node.min_x(),
-            target_node.max_x()) else { return Err(BackendError::InvalidLayout(node.id)) };
+        let (Some(end_origin), Some(end_size)) = (end_node.origin, end_node.size) else {
+            return Err(BackendError::InvalidLayout(end_node.id))
+        };
+        let (Some(start_min_x), Some(start_max_x), Some(end_min_x), Some(end_max_x)) = (
+            start_node.min_x(),
+            start_node.max_x(),
+            end_node.min_x(),
+            end_node.max_x()) else { return Err(BackendError::InvalidLayout(end_node.id)) };
 
-        let is_left_side = target_min_x < min_x;
+        // Choose the combination with the shortest distance between two points in x-axis.
+        let x1 = (start_min_x - end_min_x).abs(); // left:left
+        let x2 = (start_min_x - end_max_x).abs(); // left:right
+        let x3 = (start_max_x - end_min_x).abs(); // right:left
+        let x4 = (start_max_x - end_max_x).abs(); // right:right
 
-        let cx = if is_left_side { min_x } else { max_x };
-        let cy = origin.y + size.height / 2.0;
+        let start_cy = start_origin.y + start_size.height / 2.0;
+        let end_cy = end_origin.y + end_size.height / 2.0;
 
-        Ok(element::Circle::new()
-            .set("cx", cx)
-            .set("cy", cy)
+        let (start_cx, end_cx) = if x1 <= x2 && x1 <= x3 && x1 <= x4 {
+            // left:left
+            (start_min_x, end_min_x)
+        } else if x2 <= x1 && x2 <= x3 && x2 <= x4 {
+            // left:right
+            (start_min_x, end_max_x)
+        } else if x3 <= x1 && x3 <= x2 && x3 <= x4 {
+            // right:left
+            (start_max_x, end_min_x)
+        } else {
+            // right:right
+            (start_max_x, end_max_x)
+        };
+
+        let start_circle = element::Circle::new()
+            .set("cx", start_cx)
+            .set("cy", start_cy)
             .set("r", r)
-            .set("stroke", color.to_string())
+            .set("stroke", stroke_color.to_string())
             .set("stroke-width", stroke_width)
-            .set("fill", background_color.to_string()))
+            .set("fill", background_color.to_string());
+        let end_circle = element::Circle::new()
+            .set("cx", end_cx)
+            .set("cy", end_cy)
+            .set("r", r)
+            .set("stroke", stroke_color.to_string())
+            .set("stroke-width", stroke_width)
+            .set("fill", background_color.to_string());
+        let path = element::Path::new()
+            .set("stroke", stroke_color.to_string())
+            .set("stroke-width", stroke_width)
+            .set(
+                "d",
+                format!("M{} {} L{} {}", start_cx, start_cy, end_cx, end_cy),
+            );
+
+        Ok((path, start_circle, end_circle))
     }
 }
