@@ -13,16 +13,11 @@
 use crate::color::WebColor;
 use crate::geometry::{Point, Size};
 use derive_builder::Builder;
-use std::fmt;
+use derive_more::Display;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
+#[display(fmt = "{}", _0)]
 pub struct NodeId(usize);
-
-impl fmt::Display for NodeId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
 
 #[derive(Debug)]
 pub struct Node {
@@ -148,6 +143,23 @@ pub struct FieldNode {
     pub r#type: String,
     pub text_color: WebColor,
     pub type_color: WebColor,
+    pub bg_color: WebColor,
+}
+
+#[derive(Debug, Clone, Default, Builder)]
+#[builder(default)]
+pub struct TextSpan {
+    #[builder(setter(into))]
+    pub text: String,
+    pub color: WebColor,
+}
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Display)]
+pub enum FontFamily {
+    #[display(fmt = "Monaco,Lucida Console,monospace")]
+    Monospace1,
+    #[display(fmt = "Courier New,monospace")]
+    Monospace2,
 }
 
 #[cfg(test)]

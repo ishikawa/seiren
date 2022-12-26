@@ -1,8 +1,10 @@
-use std::fmt;
+use derive_more::Display;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Display)]
 pub enum WebColor {
+    #[display(fmt = "{}", _0)]
     RGB(RGBColor),
+    #[display(fmt = "{}", _0)]
     Named(NamedColor),
 }
 
@@ -12,16 +14,8 @@ impl Default for WebColor {
     }
 }
 
-impl fmt::Display for WebColor {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            WebColor::RGB(c) => c.fmt(f),
-            WebColor::Named(c) => c.fmt(f),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Display)]
+#[display(fmt = "#{:02X}{:02X}{:02X}", red, green, blue)]
 pub struct RGBColor {
     pub red: u8,
     pub green: u8,
@@ -34,25 +28,12 @@ impl RGBColor {
     }
 }
 
-impl fmt::Display for RGBColor {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "#{:02X}{:02X}{:02X}", self.red, self.green, self.blue)
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Display)]
 pub enum NamedColor {
+    #[display(fmt = "white")]
     White,
+    #[display(fmt = "black")]
     Black,
-}
-
-impl fmt::Display for NamedColor {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            NamedColor::White => write!(f, "white"),
-            NamedColor::Black => write!(f, "black"),
-        }
-    }
 }
 
 #[cfg(test)]
