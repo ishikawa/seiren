@@ -213,6 +213,7 @@ impl SVGBackend {
             (start_max_x, end_max_x)
         };
 
+        // Draw circles at both ends of the edge.
         let start_circle = element::Circle::new()
             .set("cx", start_cx)
             .set("cy", start_cy)
@@ -227,12 +228,18 @@ impl SVGBackend {
             .set("stroke", stroke_color.to_string())
             .set("stroke-width", stroke_width)
             .set("fill", background_color.to_string());
+
+        // Draw path
         let path = element::Path::new()
             .set("stroke", stroke_color.to_string())
             .set("stroke-width", stroke_width)
             .set(
                 "d",
-                format!("M{} {} L{} {}", start_cx, start_cy, end_cx, end_cy),
+                vec![
+                    format!("M{} {}", start_cx, start_cy),
+                    format!("L{} {}", end_cx, end_cy),
+                ]
+                .join(" "),
             );
 
         Ok((path, start_circle, end_circle))
