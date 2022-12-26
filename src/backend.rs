@@ -164,13 +164,30 @@ impl Backend for SVGBackend {
 }
 
 impl SVGBackend {
+    ///
+    /// ```svgbob
+    /// 0 - - - - - - - - - - - - - - - - - - - ->
+    /// ! -------+
+    /// !        |  ctrl1(x)  middle
+    /// !  start o--------*--.
+    /// !        |           |
+    /// !        |           * ctrl1(y)
+    /// !        |           |
+    /// !        |           |
+    /// !        |           |
+    /// !        |  ctrl2(y) *           +-------
+    /// !        |           | ctrl2(x)  |
+    /// !        |           `--*--------o end
+    /// !        |                       |
+    /// ```
     fn edge_path(
         &self,
         start_node: &mir::Node,
         end_node: &mir::Node,
     ) -> Result<(element::Path, element::Circle, element::Circle), BackendError> {
-        let r = 4;
-        let stroke_width = 2;
+        let circle_radius = 4.0;
+        let path_radius = 6.0;
+        let stroke_width = 1.5;
         let stroke_color = WebColor::RGB(RGBColor {
             red: 136,
             green: 136,
@@ -217,26 +234,44 @@ impl SVGBackend {
         let start_circle = element::Circle::new()
             .set("cx", start_cx)
             .set("cy", start_cy)
-            .set("r", r)
+            .set("r", circle_radius)
             .set("stroke", stroke_color.to_string())
             .set("stroke-width", stroke_width)
             .set("fill", background_color.to_string());
         let end_circle = element::Circle::new()
             .set("cx", end_cx)
             .set("cy", end_cy)
-            .set("r", r)
+            .set("r", circle_radius)
             .set("stroke", stroke_color.to_string())
             .set("stroke-width", stroke_width)
             .set("fill", background_color.to_string());
 
         // Draw path
+        let mid_x = start_cx.min(end_cx) + (start_cx - end_cx).abs() / 2.0;
+
+        let (ctrl1_x, ctrl2_x) = if start_cx < end_cx {
+            (mid_x - path_radius, mid_x + path_radius)
+        } else {
+            (mid_x + path_radius, mid_x - path_radius)
+        };
+        let (ctrl1_y, ctrl2_y) = if start_cy < end_cy {
+            (start_cy + path_radius, end_cy - path_radius)
+        } else {
+            (start_cy - path_radius, end_cy + path_radius)
+        };
+
         let path = element::Path::new()
             .set("stroke", stroke_color.to_string())
             .set("stroke-width", stroke_width)
+            .set("fill", "transparent")
             .set(
                 "d",
                 vec![
                     format!("M{} {}", start_cx, start_cy),
+                    format!("L{} {}", ctrl1_x, start_cy),
+                    format!("Q{} {} {} {}", mid_x, start_cy, mid_x, ctrl1_y),
+                    format!("L{} {}", mid_x, ctrl2_y),
+                    format!("Q{} {} {} {}", mid_x, end_cy, ctrl2_x, end_cy),
                     format!("L{} {}", end_cx, end_cy),
                 ]
                 .join(" "),
