@@ -97,8 +97,8 @@ impl Backend for SVGBackend {
                 let Some(field_origin) = field_node.origin else { return Err(BackendError::InvalidLayout(field_node_id)) };
                 let Some(field_size) = field_node.size else { return Err(BackendError::InvalidLayout(field_node_id)) };
 
-                let x = record_origin.x + field_origin.x;
-                let y = record_origin.y + field_origin.y;
+                let x = field_origin.x;
+                let y = field_origin.y;
 
                 // background color: we use a clip path to adjust border radius.
                 if let Some(bg_color) = &field.bg_color {
@@ -169,7 +169,7 @@ impl SVGBackend {
         node: &mir::Node,
         target_node: &mir::Node,
     ) -> Result<element::Circle, BackendError> {
-        let r = 6;
+        let r = 4;
         let stroke_width = 2;
         let color = WebColor::RGB(RGBColor {
             red: 136,

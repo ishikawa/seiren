@@ -22,6 +22,7 @@ pub struct NodeId(usize);
 #[derive(Debug)]
 pub struct Node {
     pub id: NodeId,
+    /// The origin (absolute in the global coordination)
     pub origin: Option<Point>,
     pub size: Option<Size>,
     kind: NodeKind,
