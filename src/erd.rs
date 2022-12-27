@@ -1,6 +1,7 @@
 //! ER diagram AST
 use crate::color::{NamedColor, RGBColor, WebColor};
 use crate::mir;
+use derive_more::Display;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -68,8 +69,18 @@ impl ERDiagram {
                         .build()
                         .unwrap();
 
+                    let r#type = mir::TextSpanBuilder::default()
+                        .text(column.r#type.to_string())
+                        .color(text_color.clone())
+                        .font_family(mir::FontFamily::Monospace2)
+                        .font_weight(mir::FontWeight::Lighter)
+                        .font_size(mir::FontSize::Small)
+                        .build()
+                        .unwrap();
+
                     let field = mir::FieldNodeBuilder::default()
                         .name(name)
+                        .r#type(r#type)
                         .border_color(table_border_color.clone())
                         .build()
                         .unwrap();
@@ -132,11 +143,15 @@ impl Table {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Display)]
 pub enum ColumnType {
+    #[display(fmt = "int")]
     Int,
-    Uuid,
+    #[display(fmt = "uuid")]
+    UUID,
+    #[display(fmt = "text")]
     Text,
+    #[display(fmt = "timestamp")]
     Timestamp,
 }
 

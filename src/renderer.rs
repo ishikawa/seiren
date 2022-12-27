@@ -125,8 +125,17 @@ impl Renderer for SVGRenderer {
                 }
 
                 // text
-                let label = self.draw_text(&field.name, Point::new(x + px, field_rect.mid_y()));
-                svg_doc = svg_doc.add(label);
+                let text_element =
+                    self.draw_text(&field.name, Point::new(x + px, field_rect.mid_y()));
+                svg_doc = svg_doc.add(text_element);
+
+                if let Some(type_text) = &field.r#type {
+                    let text_element = self.draw_text(
+                        type_text,
+                        Point::new(field_rect.mid_x(), field_rect.mid_y()),
+                    );
+                    svg_doc = svg_doc.add(text_element);
+                }
             }
         }
 
