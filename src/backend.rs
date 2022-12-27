@@ -196,47 +196,29 @@ impl SVGBackend {
         });
         let background_color = WebColor::RGB(RGBColor::new(28, 28, 28));
 
-        let (Some(start_origin), Some(start_size), Some(start_rect)) = (
-            start_node.origin,
-            start_node.size,
-            start_node.rect()
-        ) else {
-            return Err(BackendError::InvalidLayout(start_node.id))
-        };
-        let (Some(end_origin), Some(end_size), Some(end_rect)) = (
-            end_node.origin,
-            end_node.size,
-            end_node.rect(),
-        ) else {
-            return Err(BackendError::InvalidLayout(end_node.id))
-        };
-        let start_min_x = start_rect.min_x();
-        let start_max_x = start_rect.max_x();
-        let end_min_x = end_rect.min_x();
-        let end_max_x = end_rect.max_x();
+        // Choose the combination with the shortest distance between two connection points.
+        let mut connection_points = (
+            // start point
+            Point::default(),
+            // end point
+            Point::default(),
+            // distance
+            f32::MAX,
+        );
 
-        // Choose the combination with the shortest distance between two points in x-axis.
-        let x1 = (start_min_x - end_min_x).abs(); // left:left
-        let x2 = (start_min_x - end_max_x).abs(); // left:right
-        let x3 = (start_max_x - end_min_x).abs(); // right:left
-        let x4 = (start_max_x - end_max_x).abs(); // right:right
+        for pt1 in start_node.connection_points() {
+            for pt2 in end_node.connection_points() {
+                let d = pt1.distance(pt2);
+                if d < connection_points.2 {
+                    connection_points = (pt1.clone(), pt2.clone(), d);
+                }
+            }
+        }
 
-        let start_cy = start_origin.y + start_size.height / 2.0;
-        let end_cy = end_origin.y + end_size.height / 2.0;
-
-        let (start_cx, end_cx) = if x1 <= x2 && x1 <= x3 && x1 <= x4 {
-            // left:left
-            (start_min_x, end_min_x)
-        } else if x2 <= x1 && x2 <= x3 && x2 <= x4 {
-            // left:right
-            (start_min_x, end_max_x)
-        } else if x3 <= x1 && x3 <= x2 && x3 <= x4 {
-            // right:left
-            (start_max_x, end_min_x)
-        } else {
-            // right:right
-            (start_max_x, end_max_x)
-        };
+        let start_cx = connection_points.0.x;
+        let end_cx = connection_points.1.x;
+        let start_cy = connection_points.0.y;
+        let end_cy = connection_points.1.y;
 
         // Draw circles at both ends of the edge.
         let start_circle = element::Circle::new()
