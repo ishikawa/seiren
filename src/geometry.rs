@@ -137,6 +137,46 @@ impl Rect {
     }
 }
 
+/// `Path` is an analogue of SVG `<path>` element without visual properties.
+/// It consists of an array of `PathCommand`. See SVG specification for more
+/// details about commands.
+#[derive(Debug, Clone, Default)]
+pub struct Path {
+    commands: Vec<PathCommand>,
+}
+
+impl Path {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn commands(&self) -> impl ExactSizeIterator<Item = &PathCommand> {
+        self.commands.iter()
+    }
+
+    pub fn move_to(&mut self, point: Point) {
+        self.commands.push(PathCommand::MoveTo(point));
+    }
+
+    pub fn line_to(&mut self, point: Point) {
+        self.commands.push(PathCommand::LineTo(point));
+    }
+
+    pub fn quad_to(&mut self, ctrl: Point, to: Point) {
+        self.commands.push(PathCommand::QuadTo(ctrl, to));
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum PathCommand {
+    /// Set the beginning of the next contour to the point.
+    MoveTo(Point),
+    /// Add a line from the last point to the specified point (x, y).
+    LineTo(Point),
+    /// Add a quadratic bezier from the last point.
+    QuadTo(Point, Point),
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
