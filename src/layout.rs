@@ -9,6 +9,11 @@ pub trait LayoutEngine {
     ///
     /// The engine must assign `origin` and `size` of all nodes.
     fn execute_node_layout(&self, doc: &mut mir::Document);
+
+    /// Place all connection points for every node.
+    ///
+    /// The engine must add all possible connection points to `connection_points` of nodes.
+    fn execute_connection_point_layout(&self, doc: &mut mir::Document);
 }
 
 #[derive(Debug)]
@@ -57,4 +62,6 @@ impl LayoutEngine for SimpleLayoutEngine {
             }
         }
     }
+
+    fn execute_connection_point_layout(&self, doc: &mut mir::Document) {}
 }

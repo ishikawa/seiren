@@ -59,6 +59,7 @@ fn main() {
     let engine = SimpleLayoutEngine::new();
 
     engine.execute_node_layout(&mut doc);
+    engine.execute_connection_point_layout(&mut doc);
 
     let backend = SVGBackend::new();
     let stdout = io::stdout();
