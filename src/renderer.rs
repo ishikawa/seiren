@@ -2,7 +2,7 @@
 use crate::{
     color::{RGBColor, WebColor},
     error::BackendError,
-    geometry::PathCommand,
+    geometry::{PathCommand, Point},
     mir,
 };
 use std::io::Write;
@@ -24,7 +24,6 @@ impl SVGRenderer {
 impl Renderer for SVGRenderer {
     fn render(&self, doc: &mir::Document, writer: &mut impl Write) -> Result<(), BackendError> {
         let px = 12f32;
-        let text_baseline = 22f32;
         let border_radius = 6f32;
         let record_clip_path_id_prefix = "record-clip-path-";
         let background_color = WebColor::RGB(RGBColor::new(28, 28, 28));
@@ -127,22 +126,7 @@ impl Renderer for SVGRenderer {
                 }
 
                 // text
-                let span = &field.name;
-                let mut label = element::Text::new()
-                    .set("x", x + px)
-                    .set("y", y + text_baseline)
-                    .add(svg::node::Text::new(span.text.clone()));
-
-                if let Some(text_color) = &span.color {
-                    label = label.set("fill", text_color.to_string());
-                }
-                if let Some(font_family) = &span.font_family {
-                    label = label.set("font-family", font_family.to_string());
-                }
-                if let Some(font_weight) = &span.font_weight {
-                    label = label.set("font-weight", font_weight.to_string());
-                }
-
+                let label = self.draw_text(&field.name, Point::new(x + px, y));
                 svg_doc = svg_doc.add(label);
             }
         }
@@ -159,6 +143,53 @@ impl Renderer for SVGRenderer {
 }
 
 impl SVGRenderer {
+    /// Returns the distance between text origin (top-left) and baseline.
+    ///
+    /// ```svgbob
+    ///  o
+    ///  !
+    ///  !
+    ///  v
+    ///  +-------------
+    /// ```
+    ///
+    fn text_height(size: &mir::FontSize) -> f32 {
+        match size {
+            mir::FontSize::XXSmall => todo!(),
+            mir::FontSize::XSmall => todo!(),
+            mir::FontSize::Small => todo!(),
+            mir::FontSize::Medium => 22.0,
+            mir::FontSize::Large => todo!(),
+            mir::FontSize::XLarge => todo!(),
+            mir::FontSize::XXLarge => todo!(),
+            mir::FontSize::XXXLarge => todo!(),
+        }
+    }
+
+    fn draw_text(&self, span: &mir::TextSpan, origin: Point) -> element::Text {
+        let mut text_baseline = SVGRenderer::text_height(&mir::FontSize::default());
+
+        let mut label = element::Text::new().add(svg::node::Text::new(span.text.clone()));
+
+        if let Some(text_color) = &span.color {
+            label = label.set("fill", text_color.to_string());
+        }
+        if let Some(font_family) = &span.font_family {
+            label = label.set("font-family", font_family.to_string());
+        }
+        if let Some(font_weight) = &span.font_weight {
+            label = label.set("font-weight", font_weight.to_string());
+        }
+
+        // position
+        if let Some(font_size) = &span.font_size {
+            text_baseline = SVGRenderer::text_height(font_size);
+            label = label.set("font-size", font_size.to_string());
+        }
+
+        label.set("x", origin.x).set("y", origin.y + text_baseline)
+    }
+
     fn draw_edge_connection(
         &self,
         edge: &mir::Edge,
