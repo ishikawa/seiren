@@ -1,17 +1,17 @@
-pub mod backend;
 pub mod color;
 pub mod erd;
 pub mod error;
 pub mod geometry;
 pub mod layout;
 pub mod mir;
+pub mod renderer;
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        backend::{Backend, SVGBackend},
         erd::{Column, ColumnType, ERDiagram, Relation, RelationPath, Table},
         layout::{LayoutEngine, SimpleLayoutEngine},
+        renderer::{Renderer, SVGRenderer},
     };
     use difference::assert_diff;
 
@@ -72,11 +72,11 @@ mod tests {
         engine.place_connection_points(&mut doc);
         engine.draw_edge_path(&mut doc);
 
-        let backend = SVGBackend::new();
+        let backend = SVGRenderer::new();
         let mut bytes: Vec<u8> = vec![];
 
         backend
-            .generate(&doc, &mut bytes)
+            .render(&doc, &mut bytes)
             .expect("cannot generate SVG");
 
         let svg = String::from_utf8(bytes).unwrap();

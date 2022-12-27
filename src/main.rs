@@ -1,9 +1,9 @@
 use std::io;
 
 use seiren::{
-    backend::{Backend, SVGBackend},
     erd::{Column, ColumnType, ERDiagram, Relation, RelationPath, Table},
     layout::{LayoutEngine, SimpleLayoutEngine},
+    renderer::{Renderer, SVGRenderer},
 };
 
 fn main() {
@@ -62,11 +62,11 @@ fn main() {
     engine.place_connection_points(&mut doc);
     engine.draw_edge_path(&mut doc);
 
-    let backend = SVGBackend::new();
+    let backend = SVGRenderer::new();
     let stdout = io::stdout();
     let mut handle = stdout.lock();
 
     backend
-        .generate(&doc, &mut handle)
+        .render(&doc, &mut handle)
         .expect("cannot generate SVG");
 }

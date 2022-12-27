@@ -189,8 +189,8 @@ impl Relation {
 mod tests {
     use super::*;
     use crate::{
-        backend::{Backend, SVGBackend},
         layout::{LayoutEngine, SimpleLayoutEngine},
+        renderer::{Renderer, SVGRenderer},
     };
 
     #[test]
@@ -202,10 +202,10 @@ mod tests {
 
         engine.place_nodes(&mut doc);
 
-        let backend = SVGBackend::new();
+        let backend = SVGRenderer::new();
         let mut bytes: Vec<u8> = vec![];
 
-        backend.generate(&doc, &mut bytes).expect("generate SVG");
+        backend.render(&doc, &mut bytes).expect("generate SVG");
 
         let svg = String::from_utf8(bytes).unwrap();
 

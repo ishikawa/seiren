@@ -8,21 +8,21 @@ use crate::{
 use std::io::Write;
 use svg::node::element;
 
-pub trait Backend {
-    fn generate(&self, doc: &mir::Document, writer: &mut impl Write) -> Result<(), BackendError>;
+pub trait Renderer {
+    fn render(&self, doc: &mir::Document, writer: &mut impl Write) -> Result<(), BackendError>;
 }
 
 #[derive(Debug)]
-pub struct SVGBackend {}
+pub struct SVGRenderer {}
 
-impl SVGBackend {
+impl SVGRenderer {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl Backend for SVGBackend {
-    fn generate(&self, doc: &mir::Document, writer: &mut impl Write) -> Result<(), BackendError> {
+impl Renderer for SVGRenderer {
+    fn render(&self, doc: &mir::Document, writer: &mut impl Write) -> Result<(), BackendError> {
         let px = 12f32;
         let text_baseline = 22f32;
         let border_radius = 6f32;
@@ -158,7 +158,7 @@ impl Backend for SVGBackend {
     }
 }
 
-impl SVGBackend {
+impl SVGRenderer {
     fn draw_edge_connection(
         &self,
         edge: &mir::Edge,
