@@ -71,7 +71,7 @@ impl ERDiagram {
 
                     let r#type = mir::TextSpanBuilder::default()
                         .text(column.r#type.to_string())
-                        .color(text_color.clone())
+                        .color(ERDiagram::column_type_color(&column.r#type))
                         .font_family(mir::FontFamily::Monospace2)
                         .font_weight(mir::FontWeight::Lighter)
                         .font_size(mir::FontSize::Small)
@@ -117,6 +117,31 @@ impl ERDiagram {
         }
 
         doc
+    }
+
+    fn column_type_color(column_type: &ColumnType) -> WebColor {
+        let yellow = WebColor::RGB(RGBColor {
+            red: 236,
+            green: 199,
+            blue: 0,
+        });
+        let orange = WebColor::RGB(RGBColor {
+            red: 214,
+            green: 105,
+            blue: 5,
+        });
+        let green = WebColor::RGB(RGBColor {
+            red: 6,
+            green: 182,
+            blue: 151,
+        });
+
+        match column_type {
+            ColumnType::Int => yellow.clone(),
+            ColumnType::UUID => yellow.clone(),
+            ColumnType::Text => orange.clone(),
+            ColumnType::Timestamp => green.clone(),
+        }
     }
 }
 
