@@ -1,29 +1,28 @@
 //! Backends translate MIR into graphics format.
-use std::io::Write;
-
-use svg::node::element;
-
 use crate::{
     color::{RGBColor, WebColor},
     error::BackendError,
-    mir::{self, NodeKind},
+    geometry::PathCommand,
+    mir,
 };
+use std::io::Write;
+use svg::node::element;
 
-pub trait Backend {
-    fn generate(&self, doc: &mir::Document, writer: &mut impl Write) -> Result<(), BackendError>;
+pub trait Renderer {
+    fn render(&self, doc: &mir::Document, writer: &mut impl Write) -> Result<(), BackendError>;
 }
 
 #[derive(Debug)]
-pub struct SVGBackend {}
+pub struct SVGRenderer {}
 
-impl SVGBackend {
+impl SVGRenderer {
     pub fn new() -> Self {
         Self {}
     }
 }
 
-impl Backend for SVGBackend {
-    fn generate(&self, doc: &mir::Document, writer: &mut impl Write) -> Result<(), BackendError> {
+impl Renderer for SVGRenderer {
+    fn render(&self, doc: &mir::Document, writer: &mut impl Write) -> Result<(), BackendError> {
         let px = 12f32;
         let text_baseline = 22f32;
         let border_radius = 6f32;
@@ -45,7 +44,7 @@ impl Backend for SVGBackend {
         // -- Generate clip paths for record shapes.
         for (record_index, child_id) in doc.body().children().enumerate() {
             let Some(record_node) = doc.get_node(&child_id) else { continue };
-            let NodeKind::Record(_) = record_node.kind() else  { continue };
+            let mir::NodeKind::Record(_) = record_node.kind() else  { continue };
 
             let Some(record_origin) = record_node.origin else { return Err(BackendError::InvalidLayout(child_id)) };
             let Some(record_size) = record_node.size else { return Err(BackendError::InvalidLayout(child_id)) };
@@ -68,7 +67,7 @@ impl Backend for SVGBackend {
         // -- Draw shapes
         for (record_index, child_id) in doc.body().children().enumerate() {
             let Some(record_node) = doc.get_node(&child_id) else { continue };
-            let NodeKind::Record(record) = record_node.kind() else  { continue };
+            let mir::NodeKind::Record(record) = record_node.kind() else  { continue };
             let Some(record_origin) = record_node.origin else { return Err(BackendError::InvalidLayout(child_id)) };
             let Some(record_size) = record_node.size else { return Err(BackendError::InvalidLayout(child_id)) };
 
@@ -93,7 +92,7 @@ impl Backend for SVGBackend {
 
             for (field_index, field_node_id) in record_node.children().enumerate() {
                 let Some(field_node) = doc.get_node(&field_node_id) else { continue };
-                let NodeKind::Field(field) = field_node.kind() else  { continue };
+                let mir::NodeKind::Field(field) = field_node.kind() else  { continue };
                 let Some(field_origin) = field_node.origin else { return Err(BackendError::InvalidLayout(field_node_id)) };
                 let Some(field_size) = field_node.size else { return Err(BackendError::InvalidLayout(field_node_id)) };
 
@@ -150,11 +149,7 @@ impl Backend for SVGBackend {
 
         // -- Draw edges
         for edge in doc.edges() {
-            let Some(start_node) = doc.get_node(&edge.start_node_id) else { continue };
-            let Some(end_node) = doc.get_node(&edge.end_node_id) else { continue };
-
-            let (edge_path, start_circle, end_circle) = self.edge_path(start_node, end_node)?;
-
+            let (edge_path, start_circle, end_circle) = self.draw_edge_connection(edge)?;
             svg_doc = svg_doc.add(edge_path).add(start_circle).add(end_circle);
         }
 
@@ -163,30 +158,12 @@ impl Backend for SVGBackend {
     }
 }
 
-impl SVGBackend {
-    ///
-    /// ```svgbob
-    /// 0 - - - - - - - - - - - - - - - - - - - ->
-    /// ! -------+
-    /// !        |  ctrl1(x)  middle
-    /// !  start o--------*--.
-    /// !        |           |
-    /// !        |           * ctrl1(y)
-    /// !        |           |
-    /// !        |           |
-    /// !        |           |
-    /// !        |  ctrl2(y) *           +-------
-    /// !        |           | ctrl2(x)  |
-    /// !        |           `--*--------o end
-    /// !        |                       |
-    /// ```
-    fn edge_path(
+impl SVGRenderer {
+    fn draw_edge_connection(
         &self,
-        start_node: &mir::Node,
-        end_node: &mir::Node,
+        edge: &mir::Edge,
     ) -> Result<(element::Path, element::Circle, element::Circle), BackendError> {
         let circle_radius = 4.0;
-        let path_radius = 6.0;
         let stroke_width = 1.5;
         let stroke_color = WebColor::RGB(RGBColor {
             red: 136,
@@ -195,88 +172,49 @@ impl SVGBackend {
         });
         let background_color = WebColor::RGB(RGBColor::new(28, 28, 28));
 
-        let (Some(start_origin), Some(start_size)) = (start_node.origin, start_node.size) else {
-            return Err(BackendError::InvalidLayout(start_node.id))
-        };
-        let (Some(end_origin), Some(end_size)) = (end_node.origin, end_node.size) else {
-            return Err(BackendError::InvalidLayout(end_node.id))
-        };
-        let (Some(start_min_x), Some(start_max_x), Some(end_min_x), Some(end_max_x)) = (
-            start_node.min_x(),
-            start_node.max_x(),
-            end_node.min_x(),
-            end_node.max_x()) else { return Err(BackendError::InvalidLayout(end_node.id)) };
-
-        // Choose the combination with the shortest distance between two points in x-axis.
-        let x1 = (start_min_x - end_min_x).abs(); // left:left
-        let x2 = (start_min_x - end_max_x).abs(); // left:right
-        let x3 = (start_max_x - end_min_x).abs(); // right:left
-        let x4 = (start_max_x - end_max_x).abs(); // right:right
-
-        let start_cy = start_origin.y + start_size.height / 2.0;
-        let end_cy = end_origin.y + end_size.height / 2.0;
-
-        let (start_cx, end_cx) = if x1 <= x2 && x1 <= x3 && x1 <= x4 {
-            // left:left
-            (start_min_x, end_min_x)
-        } else if x2 <= x1 && x2 <= x3 && x2 <= x4 {
-            // left:right
-            (start_min_x, end_max_x)
-        } else if x3 <= x1 && x3 <= x2 && x3 <= x4 {
-            // right:left
-            (start_max_x, end_min_x)
-        } else {
-            // right:right
-            (start_max_x, end_max_x)
+        let Some(path) = &edge.path else {
+            return Err(BackendError::InvalidLayout(edge.start_node_id))
         };
 
         // Draw circles at both ends of the edge.
+        let start_point = path.start_point();
+        let end_point = path.end_point();
+
         let start_circle = element::Circle::new()
-            .set("cx", start_cx)
-            .set("cy", start_cy)
+            .set("cx", start_point.x)
+            .set("cy", start_point.y)
             .set("r", circle_radius)
             .set("stroke", stroke_color.to_string())
             .set("stroke-width", stroke_width)
             .set("fill", background_color.to_string());
         let end_circle = element::Circle::new()
-            .set("cx", end_cx)
-            .set("cy", end_cy)
+            .set("cx", end_point.x)
+            .set("cy", end_point.y)
             .set("r", circle_radius)
             .set("stroke", stroke_color.to_string())
             .set("stroke-width", stroke_width)
             .set("fill", background_color.to_string());
 
-        // Draw path
-        let mid_x = start_cx.min(end_cx) + (start_cx - end_cx).abs() / 2.0;
+        let mut d = vec![];
 
-        let (ctrl1_x, ctrl2_x) = if start_cx < end_cx {
-            (mid_x - path_radius, mid_x + path_radius)
-        } else {
-            (mid_x + path_radius, mid_x - path_radius)
-        };
-        let (ctrl1_y, ctrl2_y) = if start_cy < end_cy {
-            (start_cy + path_radius, end_cy - path_radius)
-        } else {
-            (start_cy - path_radius, end_cy + path_radius)
-        };
+        for command in path.commands() {
+            let c = match command {
+                PathCommand::MoveTo(pt) => format!("M{} {}", pt.x, pt.y),
+                PathCommand::LineTo(pt) => format!("L{} {}", pt.x, pt.y),
+                PathCommand::QuadTo(ctrl, to) => {
+                    format!("Q{} {} {} {}", ctrl.x, ctrl.y, to.x, to.y)
+                }
+            };
 
-        let path = element::Path::new()
+            d.push(c);
+        }
+
+        let svg_path = element::Path::new()
             .set("stroke", stroke_color.to_string())
             .set("stroke-width", stroke_width)
             .set("fill", "transparent")
-            .set(
-                "d",
-                vec![
-                    format!("M{} {}", start_cx, start_cy),
-                    format!("L{} {}", ctrl1_x, start_cy),
-                    format!("Q{} {} {} {}", mid_x, start_cy, mid_x, ctrl1_y),
-                    format!("L{} {}", mid_x, ctrl2_y),
-                    format!("Q{} {} {} {}", mid_x, end_cy, ctrl2_x, end_cy),
-                    format!("L{} {}", end_cx, end_cy),
-                ]
-                .join(" "),
-            );
+            .set("d", d.join(" "));
 
-        Ok((path, start_circle, end_circle))
+        Ok((svg_path, start_circle, end_circle))
     }
 }

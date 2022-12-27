@@ -11,7 +11,7 @@
 //! | (0, 100)
 //! ```
 use crate::color::WebColor;
-use crate::geometry::{Point, Size};
+use crate::geometry::{Path, Point, Rect, Size};
 use derive_builder::Builder;
 use derive_more::Display;
 
@@ -25,6 +25,9 @@ pub struct Node {
     /// The origin (absolute in the global coordination)
     pub origin: Option<Point>,
     pub size: Option<Size>,
+
+    /// Points to which edges can be connected.
+    connection_points: Vec<Point>,
     kind: NodeKind,
     children: Vec<NodeId>,
 }
@@ -36,6 +39,7 @@ impl Node {
             kind,
             origin: None,
             size: None,
+            connection_points: vec![],
             children: vec![],
         }
     }
@@ -43,6 +47,8 @@ impl Node {
     pub fn kind(&self) -> &NodeKind {
         &self.kind
     }
+
+    // --- Children
 
     pub fn children(&self) -> impl ExactSizeIterator<Item = NodeId> + '_ {
         self.children.iter().copied()
@@ -52,15 +58,19 @@ impl Node {
         self.children.push(node_id);
     }
 
-    // Geometry
-
-    pub fn min_x(&self) -> Option<f32> {
-        self.origin.map(|pt| pt.x)
+    // --- Geometry
+    pub fn rect(&self) -> Option<Rect> {
+        self.origin
+            .and_then(|origin| self.size.map(|size| Rect::new(origin, size)))
     }
 
-    pub fn max_x(&self) -> Option<f32> {
-        self.origin
-            .and_then(|pt| self.size.map(|size| size.width + pt.x))
+    // --- Connection points
+    pub fn connection_points(&self) -> impl ExactSizeIterator<Item = &Point> {
+        self.connection_points.iter()
+    }
+
+    pub fn append_connection_point(&mut self, connection_point: Point) {
+        self.connection_points.push(connection_point);
     }
 }
 
@@ -132,6 +142,10 @@ impl Document {
         self.edges.iter()
     }
 
+    pub fn edges_mut(&mut self) -> impl ExactSizeIterator<Item = &mut Edge> {
+        self.edges.iter_mut()
+    }
+
     pub fn append_edge(&mut self, edge: Edge) {
         self.edges.push(edge);
     }
@@ -197,10 +211,11 @@ pub enum FontWeight {
 }
 
 // --- Edge
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct Edge {
     pub start_node_id: NodeId,
     pub end_node_id: NodeId,
+    pub path: Option<Path>,
 }
 
 impl Edge {
@@ -208,6 +223,7 @@ impl Edge {
         Self {
             start_node_id: start_node,
             end_node_id: end_node,
+            path: None,
         }
     }
 }
