@@ -195,17 +195,24 @@ impl SVGBackend {
         });
         let background_color = WebColor::RGB(RGBColor::new(28, 28, 28));
 
-        let (Some(start_origin), Some(start_size)) = (start_node.origin, start_node.size) else {
+        let (Some(start_origin), Some(start_size), Some(start_rect)) = (
+            start_node.origin,
+            start_node.size,
+            start_node.rect()
+        ) else {
             return Err(BackendError::InvalidLayout(start_node.id))
         };
-        let (Some(end_origin), Some(end_size)) = (end_node.origin, end_node.size) else {
+        let (Some(end_origin), Some(end_size), Some(end_rect)) = (
+            end_node.origin,
+            end_node.size,
+            end_node.rect(),
+        ) else {
             return Err(BackendError::InvalidLayout(end_node.id))
         };
-        let (Some(start_min_x), Some(start_max_x), Some(end_min_x), Some(end_max_x)) = (
-            start_node.min_x(),
-            start_node.max_x(),
-            end_node.min_x(),
-            end_node.max_x()) else { return Err(BackendError::InvalidLayout(end_node.id)) };
+        let start_min_x = start_rect.min_x();
+        let start_max_x = start_rect.max_x();
+        let end_min_x = end_rect.min_x();
+        let end_max_x = end_rect.max_x();
 
         // Choose the combination with the shortest distance between two points in x-axis.
         let x1 = (start_min_x - end_min_x).abs(); // left:left

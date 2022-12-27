@@ -79,3 +79,55 @@ impl Size {
         Self { width, height }
     }
 }
+
+/// Corners and centers in a rectangle.
+///
+/// ```svgbob
+///           minX    midX    maxX
+///   (origin) *----------*----------*
+///            |                     |
+///            |                     |
+///            * (center) *          * midY
+///            |                     |
+///            |                     |
+///            *----------*----------* maxY
+/// ```
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct Rect {
+    pub origin: Point,
+    pub size: Size,
+}
+
+impl Rect {
+    pub fn new(origin: Point, size: Size) -> Self {
+        Self { origin, size }
+    }
+
+    pub fn center(&self) -> Point {
+        Point::new(self.mid_x(), self.mid_y())
+    }
+
+    pub fn min_x(&self) -> f32 {
+        self.origin.x
+    }
+
+    pub fn mid_x(&self) -> f32 {
+        self.origin.x + self.size.width / 2.0
+    }
+
+    pub fn max_x(&self) -> f32 {
+        self.origin.x + self.size.width
+    }
+
+    pub fn min_y(&self) -> f32 {
+        self.origin.y
+    }
+
+    pub fn mid_y(&self) -> f32 {
+        self.origin.y + self.size.height / 2.0
+    }
+
+    pub fn max_y(&self) -> f32 {
+        self.origin.y + self.size.height
+    }
+}

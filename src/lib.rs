@@ -8,13 +8,12 @@ pub mod mir;
 
 #[cfg(test)]
 mod tests {
-    use std::io;
-
     use crate::{
         backend::{Backend, SVGBackend},
         erd::{Column, ColumnType, ERDiagram, Relation, RelationPath, Table},
         layout::{LayoutEngine, SimpleLayoutEngine},
     };
+    use difference::assert_diff;
 
     #[test]
     fn demo_svg() {
@@ -80,7 +79,7 @@ mod tests {
             .expect("cannot generate SVG");
 
         let svg = String::from_utf8(bytes).unwrap();
-        assert_eq!(svg, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\">
+        assert_diff!(svg.as_str(), "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\">
 <rect fill=\"#1C1C1C\" height=\"100%\" width=\"100%\"/>
 <defs>
 <clipPath id=\"record-clip-path-0\">
@@ -147,6 +146,6 @@ created_by
 <path d=\"M430 307.5 L396 307.5 Q390 307.5 390 301.5 L390 138.5 Q390 132.5 384 132.5 L350 132.5\" fill=\"transparent\" stroke=\"#888888\" stroke-width=\"1.5\"/>
 <circle cx=\"430\" cy=\"307.5\" fill=\"#1C1C1C\" r=\"4\" stroke=\"#888888\" stroke-width=\"1.5\"/>
 <circle cx=\"350\" cy=\"132.5\" fill=\"#1C1C1C\" r=\"4\" stroke=\"#888888\" stroke-width=\"1.5\"/>
-</svg>");
+</svg>", "\n", 0);
     }
 }

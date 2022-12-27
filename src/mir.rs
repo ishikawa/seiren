@@ -11,7 +11,7 @@
 //! | (0, 100)
 //! ```
 use crate::color::WebColor;
-use crate::geometry::{Point, Size};
+use crate::geometry::{Point, Rect, Size};
 use derive_builder::Builder;
 use derive_more::Display;
 
@@ -59,14 +59,9 @@ impl Node {
     }
 
     // --- Geometry
-
-    pub fn min_x(&self) -> Option<f32> {
-        self.origin.map(|pt| pt.x)
-    }
-
-    pub fn max_x(&self) -> Option<f32> {
+    pub fn rect(&self) -> Option<Rect> {
         self.origin
-            .and_then(|pt| self.size.map(|size| size.width + pt.x))
+            .and_then(|origin| self.size.map(|size| Rect::new(origin, size)))
     }
 
     // --- Connection points
