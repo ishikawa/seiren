@@ -5,7 +5,10 @@ use crate::{
 };
 
 pub trait LayoutEngine {
-    fn layout_nodes(&self, doc: &mut mir::Document);
+    /// Place all nodes on 2D coordination.
+    ///
+    /// The engine must assign `origin` and `size` of all nodes.
+    fn execute_node_layout(&self, doc: &mut mir::Document);
 }
 
 #[derive(Debug)]
@@ -18,7 +21,7 @@ impl SimpleLayoutEngine {
 }
 
 impl LayoutEngine for SimpleLayoutEngine {
-    fn layout_nodes(&self, doc: &mut mir::Document) {
+    fn execute_node_layout(&self, doc: &mut mir::Document) {
         let x = 50f32;
         let y = 80f32;
         let line_height = 35f32;
