@@ -6,6 +6,7 @@ use svg::node::element;
 use crate::{
     color::{RGBColor, WebColor},
     error::BackendError,
+    geometry::Point,
     mir::{self, NodeKind},
 };
 

@@ -66,6 +66,11 @@ impl Point {
     pub fn new(x: f32, y: f32) -> Self {
         Self { x, y }
     }
+
+    /// Returns the distance from this `Point` to a specified point.
+    pub fn distance(&self, other: &Point) -> f32 {
+        ((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt()
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -129,5 +134,19 @@ impl Rect {
 
     pub fn max_y(&self) -> f32 {
         self.origin.y + self.size.height
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn point_distance() {
+        let pt1 = Point::new(-1.0, -1.0);
+        let pt2 = Point::new(1.0, 1.0);
+
+        assert_eq!(pt1.distance(&pt2), 2.8284271247461903);
+        assert_eq!(pt1.distance(&pt2), pt2.distance(&pt1));
     }
 }
