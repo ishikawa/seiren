@@ -210,6 +210,27 @@ pub enum FontWeight {
     Bolder,
 }
 
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Display)]
+pub enum FontSize {
+    /* <absolute-size> values */
+    #[display(fmt = "xx-small")]
+    XXSmall,
+    #[display(fmt = "x-small")]
+    XSmall,
+    #[display(fmt = "small")]
+    Small,
+    #[display(fmt = "medium")]
+    Medium,
+    #[display(fmt = "large")]
+    Large,
+    #[display(fmt = "x-large")]
+    XLarge,
+    #[display(fmt = "xx-large")]
+    XXLarge,
+    #[display(fmt = "xxx-large")]
+    XXXLarge,
+}
+
 // --- Edge
 #[derive(Debug)]
 pub struct Edge {
