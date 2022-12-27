@@ -1,6 +1,8 @@
 //! Layout engine
+use std::collections::VecDeque;
+
 use crate::{
-    geometry::{Point, Size},
+    geometry::{Path, Point, Size},
     mir::{self, NodeKind},
 };
 
@@ -8,12 +10,17 @@ pub trait LayoutEngine {
     /// Place all nodes on 2D coordination.
     ///
     /// The engine must assign `origin` and `size` of all nodes.
-    fn execute_node_layout(&self, doc: &mut mir::Document);
+    fn place_nodes(&self, doc: &mut mir::Document);
 
     /// Place all connection points for every node.
     ///
     /// The engine must add all possible connection points to `connection_points` of nodes.
-    fn execute_connection_point_layout(&self, doc: &mut mir::Document);
+    fn place_connection_points(&self, doc: &mut mir::Document);
+
+    /// Draw path between both ends (connection points) of each edge.
+    ///
+    /// The engine must build a `path` of edges.
+    fn draw_edge_path(&self, doc: &mut mir::Document);
 }
 
 #[derive(Debug)]
@@ -26,7 +33,7 @@ impl SimpleLayoutEngine {
 }
 
 impl LayoutEngine for SimpleLayoutEngine {
-    fn execute_node_layout(&self, doc: &mut mir::Document) {
+    fn place_nodes(&self, doc: &mut mir::Document) {
         let x = 50f32;
         let y = 80f32;
         let line_height = 35f32;
@@ -63,7 +70,7 @@ impl LayoutEngine for SimpleLayoutEngine {
         }
     }
 
-    fn execute_connection_point_layout(&self, doc: &mut mir::Document) {
+    fn place_connection_points(&self, doc: &mut mir::Document) {
         let child_id_vec = doc.body().children().collect::<Vec<_>>();
 
         for (_, child_id) in child_id_vec.iter().enumerate() {
@@ -127,6 +134,85 @@ impl LayoutEngine for SimpleLayoutEngine {
                     }
                 }
             }
+        }
+    }
+
+    ///
+    /// ```svgbob
+    /// 0 - - - - - - - - - - - - - - - - - - - ->
+    /// ! -------+
+    /// !        |  ctrl1(x)  middle
+    /// !  start o--------*--.
+    /// !        |           |
+    /// !        |           * ctrl1(y)
+    /// !        |           |
+    /// !        |           |
+    /// !        |           |
+    /// !        |  ctrl2(y) *           +-------
+    /// !        |           | ctrl2(x)  |
+    /// !        |           `--*--------o end
+    /// !        |                       |
+    /// ```
+    fn draw_edge_path(&self, doc: &mut mir::Document) {
+        let path_radius = 6.0;
+
+        let mut paths: VecDeque<Path> = VecDeque::with_capacity(doc.edges().len());
+
+        for edge in doc.edges() {
+            let Some(start_node) = doc.get_node(&edge.start_node_id) else { continue };
+            let Some(end_node) = doc.get_node(&edge.end_node_id) else { continue };
+
+            // Choose the combination with the shortest distance between two connection points.
+            let mut connection_points = (
+                // start point
+                Point::default(),
+                // end point
+                Point::default(),
+                // distance
+                f32::MAX,
+            );
+
+            for pt1 in start_node.connection_points() {
+                for pt2 in end_node.connection_points() {
+                    let d = pt1.distance(pt2);
+                    if d < connection_points.2 {
+                        connection_points = (pt1.clone(), pt2.clone(), d);
+                    }
+                }
+            }
+
+            // Build a path.
+            let start_cx = connection_points.0.x;
+            let end_cx = connection_points.1.x;
+            let start_cy = connection_points.0.y;
+            let end_cy = connection_points.1.y;
+
+            let mid_x = start_cx.min(end_cx) + (start_cx - end_cx).abs() / 2.0;
+
+            let (ctrl1_x, ctrl2_x) = if start_cx < end_cx {
+                (mid_x - path_radius, mid_x + path_radius)
+            } else {
+                (mid_x + path_radius, mid_x - path_radius)
+            };
+            let (ctrl1_y, ctrl2_y) = if start_cy < end_cy {
+                (start_cy + path_radius, end_cy - path_radius)
+            } else {
+                (start_cy - path_radius, end_cy + path_radius)
+            };
+
+            let mut path = Path::new(connection_points.0);
+
+            path.line_to(Point::new(ctrl1_x, start_cy));
+            path.quad_to(Point::new(mid_x, start_cy), Point::new(mid_x, ctrl1_y));
+            path.line_to(Point::new(mid_x, ctrl2_y));
+            path.quad_to(Point::new(mid_x, end_cy), Point::new(ctrl2_x, end_cy));
+            path.line_to(Point::new(end_cx, end_cy));
+
+            paths.push_back(path);
+        }
+
+        for edge in doc.edges_mut() {
+            edge.path = Some(paths.pop_front().unwrap());
         }
     }
 }

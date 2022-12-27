@@ -11,7 +11,7 @@
 //! | (0, 100)
 //! ```
 use crate::color::WebColor;
-use crate::geometry::{Point, Rect, Size};
+use crate::geometry::{Path, Point, Rect, Size};
 use derive_builder::Builder;
 use derive_more::Display;
 
@@ -142,6 +142,10 @@ impl Document {
         self.edges.iter()
     }
 
+    pub fn edges_mut(&mut self) -> impl ExactSizeIterator<Item = &mut Edge> {
+        self.edges.iter_mut()
+    }
+
     pub fn append_edge(&mut self, edge: Edge) {
         self.edges.push(edge);
     }
@@ -207,10 +211,11 @@ pub enum FontWeight {
 }
 
 // --- Edge
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct Edge {
     pub start_node_id: NodeId,
     pub end_node_id: NodeId,
+    pub path: Option<Path>,
 }
 
 impl Edge {
@@ -218,6 +223,7 @@ impl Edge {
         Self {
             start_node_id: start_node,
             end_node_id: end_node,
+            path: None,
         }
     }
 }

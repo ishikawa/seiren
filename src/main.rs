@@ -58,8 +58,9 @@ fn main() {
     let mut doc = diagram.into_mir();
     let engine = SimpleLayoutEngine::new();
 
-    engine.execute_node_layout(&mut doc);
-    engine.execute_connection_point_layout(&mut doc);
+    engine.place_nodes(&mut doc);
+    engine.place_connection_points(&mut doc);
+    engine.draw_edge_path(&mut doc);
 
     let backend = SVGBackend::new();
     let stdout = io::stdout();

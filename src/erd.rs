@@ -200,7 +200,7 @@ mod tests {
 
         let engine = SimpleLayoutEngine::new();
 
-        engine.execute_node_layout(&mut doc);
+        engine.place_nodes(&mut doc);
 
         let backend = SVGBackend::new();
         let mut bytes: Vec<u8> = vec![];

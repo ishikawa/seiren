@@ -140,14 +140,20 @@ impl Rect {
 /// `Path` is an analogue of SVG `<path>` element without visual properties.
 /// It consists of an array of `PathCommand`. See SVG specification for more
 /// details about commands.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Path {
     commands: Vec<PathCommand>,
 }
 
 impl Path {
-    pub fn new() -> Self {
-        Self::default()
+    /// Build a new `Path`.
+    ///
+    /// - `start_point` - You must supply the start point. A `Path` must contain at least
+    ///                   one `MoveTo` command.
+    pub fn new(start_point: Point) -> Self {
+        Self {
+            commands: vec![PathCommand::MoveTo(start_point)],
+        }
     }
 
     pub fn commands(&self) -> impl ExactSizeIterator<Item = &PathCommand> {
@@ -164,6 +170,24 @@ impl Path {
 
     pub fn quad_to(&mut self, ctrl: Point, to: Point) {
         self.commands.push(PathCommand::QuadTo(ctrl, to));
+    }
+
+    pub fn start_point(&self) -> &Point {
+        let Some(PathCommand::MoveTo(pt)) = self.commands.get(0) else {
+            panic!("A `Path` must contain at least one `MoveTo` command.")
+        };
+
+        pt
+    }
+
+    pub fn end_point(&self) -> &Point {
+        let last_command = self.commands.last().unwrap();
+
+        match last_command {
+            PathCommand::MoveTo(pt) => pt,
+            PathCommand::LineTo(pt) => pt,
+            PathCommand::QuadTo(_, pt) => pt,
+        }
     }
 }
 
