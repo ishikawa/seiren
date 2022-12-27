@@ -188,6 +188,8 @@ pub struct TextSpan {
     pub font_family: Option<FontFamily>,
     #[builder(setter(strip_option))]
     pub font_weight: Option<FontWeight>,
+    #[builder(setter(strip_option))]
+    pub font_size: Option<FontSize>,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Display)]
@@ -208,6 +210,39 @@ pub enum FontWeight {
     Lighter,
     #[display(fmt = "bolder")]
     Bolder,
+}
+
+impl Default for FontWeight {
+    fn default() -> Self {
+        Self::Normal
+    }
+}
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Display)]
+pub enum FontSize {
+    /* <absolute-size> values */
+    #[display(fmt = "xx-small")]
+    XXSmall,
+    #[display(fmt = "x-small")]
+    XSmall,
+    #[display(fmt = "small")]
+    Small,
+    #[display(fmt = "medium")]
+    Medium,
+    #[display(fmt = "large")]
+    Large,
+    #[display(fmt = "x-large")]
+    XLarge,
+    #[display(fmt = "xx-large")]
+    XXLarge,
+    #[display(fmt = "xxx-large")]
+    XXXLarge,
+}
+
+impl Default for FontSize {
+    fn default() -> Self {
+        Self::Medium
+    }
 }
 
 // --- Edge

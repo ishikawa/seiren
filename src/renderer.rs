@@ -2,7 +2,7 @@
 use crate::{
     color::{RGBColor, WebColor},
     error::BackendError,
-    geometry::PathCommand,
+    geometry::{PathCommand, Point},
     mir,
 };
 use std::io::Write;
@@ -24,7 +24,6 @@ impl SVGRenderer {
 impl Renderer for SVGRenderer {
     fn render(&self, doc: &mir::Document, writer: &mut impl Write) -> Result<(), BackendError> {
         let px = 12f32;
-        let text_baseline = 22f32;
         let border_radius = 6f32;
         let record_clip_path_id_prefix = "record-clip-path-";
         let background_color = WebColor::RGB(RGBColor::new(28, 28, 28));
@@ -93,19 +92,18 @@ impl Renderer for SVGRenderer {
             for (field_index, field_node_id) in record_node.children().enumerate() {
                 let Some(field_node) = doc.get_node(&field_node_id) else { continue };
                 let mir::NodeKind::Field(field) = field_node.kind() else  { continue };
-                let Some(field_origin) = field_node.origin else { return Err(BackendError::InvalidLayout(field_node_id)) };
-                let Some(field_size) = field_node.size else { return Err(BackendError::InvalidLayout(field_node_id)) };
+                let Some(field_rect) = field_node.rect() else { return Err(BackendError::InvalidLayout(field_node_id)) };
 
-                let x = field_origin.x;
-                let y = field_origin.y;
+                let x = field_rect.min_x();
+                let y = field_rect.min_y();
 
                 // background color: we use a clip path to adjust border radius.
                 if let Some(bg_color) = &field.bg_color {
                     let field_bg = element::Rectangle::new()
                         .set("x", x)
                         .set("y", y)
-                        .set("width", field_size.width)
-                        .set("height", field_size.height)
+                        .set("width", field_rect.width())
+                        .set("height", field_rect.height())
                         .set("fill", bg_color.to_string())
                         .set("clip-path", format!("url(#{})", record_clip_path_id));
                     svg_doc = svg_doc.add(field_bg);
@@ -115,7 +113,7 @@ impl Renderer for SVGRenderer {
                 if field_index > 0 {
                     let mut line = element::Line::new()
                         .set("x1", x)
-                        .set("x2", x + field_size.width)
+                        .set("x2", field_rect.max_x())
                         .set("y1", y)
                         .set("y2", y);
                     if let Some(border_color) = &field.border_color {
@@ -127,23 +125,17 @@ impl Renderer for SVGRenderer {
                 }
 
                 // text
-                let span = &field.name;
-                let mut label = element::Text::new()
-                    .set("x", x + px)
-                    .set("y", y + text_baseline)
-                    .add(svg::node::Text::new(span.text.clone()));
+                let text_element =
+                    self.draw_text(&field.name, Point::new(x + px, field_rect.mid_y()));
+                svg_doc = svg_doc.add(text_element);
 
-                if let Some(text_color) = &span.color {
-                    label = label.set("fill", text_color.to_string());
+                if let Some(type_text) = &field.r#type {
+                    let text_element = self.draw_text(
+                        type_text,
+                        Point::new(field_rect.mid_x(), field_rect.mid_y()),
+                    );
+                    svg_doc = svg_doc.add(text_element);
                 }
-                if let Some(font_family) = &span.font_family {
-                    label = label.set("font-family", font_family.to_string());
-                }
-                if let Some(font_weight) = &span.font_weight {
-                    label = label.set("font-weight", font_weight.to_string());
-                }
-
-                svg_doc = svg_doc.add(label);
             }
         }
 
@@ -159,6 +151,31 @@ impl Renderer for SVGRenderer {
 }
 
 impl SVGRenderer {
+    fn draw_text(&self, span: &mir::TextSpan, origin: Point) -> element::Text {
+        let mut label = element::Text::new()
+            .set("x", origin.x)
+            .set("y", origin.y)
+            .set("dominant-baseline", "middle")
+            .add(svg::node::Text::new(span.text.clone()));
+
+        if let Some(text_color) = &span.color {
+            label = label.set("fill", text_color.to_string());
+        }
+        if let Some(font_family) = &span.font_family {
+            label = label.set("font-family", font_family.to_string());
+        }
+        if let Some(font_weight) = &span.font_weight {
+            label = label.set("font-weight", font_weight.to_string());
+        }
+
+        // position
+        if let Some(font_size) = &span.font_size {
+            label = label.set("font-size", font_size.to_string());
+        }
+
+        label
+    }
+
     fn draw_edge_connection(
         &self,
         edge: &mir::Edge,

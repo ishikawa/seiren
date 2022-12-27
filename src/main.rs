@@ -17,7 +17,7 @@ fn main() {
         .push(Column::new("id".into(), ColumnType::Int));
     users_table
         .columns
-        .push(Column::new("uuid".into(), ColumnType::Uuid));
+        .push(Column::new("uuid".into(), ColumnType::UUID));
     users_table
         .columns
         .push(Column::new("email".into(), ColumnType::Text));
@@ -34,7 +34,7 @@ fn main() {
         .push(Column::new("id".into(), ColumnType::Int));
     posts_table
         .columns
-        .push(Column::new("uuid".into(), ColumnType::Uuid));
+        .push(Column::new("uuid".into(), ColumnType::UUID));
     posts_table
         .columns
         .push(Column::new("title".into(), ColumnType::Text));
