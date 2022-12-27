@@ -135,6 +135,14 @@ impl Rect {
     pub fn max_y(&self) -> f32 {
         self.origin.y + self.size.height
     }
+
+    pub fn width(&self) -> f32 {
+        self.size.width
+    }
+
+    pub fn height(&self) -> f32 {
+        self.size.height
+    }
 }
 
 /// `Path` is an analogue of SVG `<path>` element without visual properties.

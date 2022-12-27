@@ -92,56 +92,56 @@ mod tests {
 </defs>
 <rect fill=\"#212121\" height=\"210\" rx=\"6\" ry=\"6\" stroke=\"#494949\" width=\"300\" x=\"50\" y=\"80\"/>
 <rect clip-path=\"url(#record-clip-path-0)\" fill=\"#494949\" height=\"35\" width=\"300\" x=\"50\" y=\"80\"/>
-<text fill=\"white\" font-family=\"Monaco,Lucida Console,monospace\" font-weight=\"bold\" x=\"62\" y=\"102\">
+<text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Monaco,Lucida Console,monospace\" font-weight=\"bold\" x=\"62\" y=\"97.5\">
 users
 </text>
 <line stroke=\"#494949\" stroke-width=\"1\" x1=\"50\" x2=\"350\" y1=\"115\" y2=\"115\"/>
-<text fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"62\" y=\"137\">
+<text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"62\" y=\"132.5\">
 id
 </text>
 <line stroke=\"#494949\" stroke-width=\"1\" x1=\"50\" x2=\"350\" y1=\"150\" y2=\"150\"/>
-<text fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"62\" y=\"172\">
+<text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"62\" y=\"167.5\">
 uuid
 </text>
 <line stroke=\"#494949\" stroke-width=\"1\" x1=\"50\" x2=\"350\" y1=\"185\" y2=\"185\"/>
-<text fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"62\" y=\"207\">
+<text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"62\" y=\"202.5\">
 email
 </text>
 <line stroke=\"#494949\" stroke-width=\"1\" x1=\"50\" x2=\"350\" y1=\"220\" y2=\"220\"/>
-<text fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"62\" y=\"242\">
+<text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"62\" y=\"237.5\">
 about_html
 </text>
 <line stroke=\"#494949\" stroke-width=\"1\" x1=\"50\" x2=\"350\" y1=\"255\" y2=\"255\"/>
-<text fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"62\" y=\"277\">
+<text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"62\" y=\"272.5\">
 created_at
 </text>
 <rect fill=\"#212121\" height=\"245\" rx=\"6\" ry=\"6\" stroke=\"#494949\" width=\"300\" x=\"430\" y=\"80\"/>
 <rect clip-path=\"url(#record-clip-path-1)\" fill=\"#494949\" height=\"35\" width=\"300\" x=\"430\" y=\"80\"/>
-<text fill=\"white\" font-family=\"Monaco,Lucida Console,monospace\" font-weight=\"bold\" x=\"442\" y=\"102\">
+<text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Monaco,Lucida Console,monospace\" font-weight=\"bold\" x=\"442\" y=\"97.5\">
 posts
 </text>
 <line stroke=\"#494949\" stroke-width=\"1\" x1=\"430\" x2=\"730\" y1=\"115\" y2=\"115\"/>
-<text fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"442\" y=\"137\">
+<text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"442\" y=\"132.5\">
 id
 </text>
 <line stroke=\"#494949\" stroke-width=\"1\" x1=\"430\" x2=\"730\" y1=\"150\" y2=\"150\"/>
-<text fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"442\" y=\"172\">
+<text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"442\" y=\"167.5\">
 uuid
 </text>
 <line stroke=\"#494949\" stroke-width=\"1\" x1=\"430\" x2=\"730\" y1=\"185\" y2=\"185\"/>
-<text fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"442\" y=\"207\">
+<text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"442\" y=\"202.5\">
 title
 </text>
 <line stroke=\"#494949\" stroke-width=\"1\" x1=\"430\" x2=\"730\" y1=\"220\" y2=\"220\"/>
-<text fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"442\" y=\"242\">
+<text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"442\" y=\"237.5\">
 content
 </text>
 <line stroke=\"#494949\" stroke-width=\"1\" x1=\"430\" x2=\"730\" y1=\"255\" y2=\"255\"/>
-<text fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"442\" y=\"277\">
+<text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"442\" y=\"272.5\">
 created_at
 </text>
 <line stroke=\"#494949\" stroke-width=\"1\" x1=\"430\" x2=\"730\" y1=\"290\" y2=\"290\"/>
-<text fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"442\" y=\"312\">
+<text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" x=\"442\" y=\"307.5\">
 created_by
 </text>
 <path d=\"M430 307.5 L396 307.5 Q390 307.5 390 301.5 L390 138.5 Q390 132.5 384 132.5 L350 132.5\" fill=\"transparent\" stroke=\"#888888\" stroke-width=\"1.5\"/>

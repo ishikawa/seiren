@@ -92,19 +92,18 @@ impl Renderer for SVGRenderer {
             for (field_index, field_node_id) in record_node.children().enumerate() {
                 let Some(field_node) = doc.get_node(&field_node_id) else { continue };
                 let mir::NodeKind::Field(field) = field_node.kind() else  { continue };
-                let Some(field_origin) = field_node.origin else { return Err(BackendError::InvalidLayout(field_node_id)) };
-                let Some(field_size) = field_node.size else { return Err(BackendError::InvalidLayout(field_node_id)) };
+                let Some(field_rect) = field_node.rect() else { return Err(BackendError::InvalidLayout(field_node_id)) };
 
-                let x = field_origin.x;
-                let y = field_origin.y;
+                let x = field_rect.min_x();
+                let y = field_rect.min_y();
 
                 // background color: we use a clip path to adjust border radius.
                 if let Some(bg_color) = &field.bg_color {
                     let field_bg = element::Rectangle::new()
                         .set("x", x)
                         .set("y", y)
-                        .set("width", field_size.width)
-                        .set("height", field_size.height)
+                        .set("width", field_rect.width())
+                        .set("height", field_rect.height())
                         .set("fill", bg_color.to_string())
                         .set("clip-path", format!("url(#{})", record_clip_path_id));
                     svg_doc = svg_doc.add(field_bg);
@@ -114,7 +113,7 @@ impl Renderer for SVGRenderer {
                 if field_index > 0 {
                     let mut line = element::Line::new()
                         .set("x1", x)
-                        .set("x2", x + field_size.width)
+                        .set("x2", field_rect.max_x())
                         .set("y1", y)
                         .set("y2", y);
                     if let Some(border_color) = &field.border_color {
@@ -126,7 +125,7 @@ impl Renderer for SVGRenderer {
                 }
 
                 // text
-                let label = self.draw_text(&field.name, Point::new(x + px, y));
+                let label = self.draw_text(&field.name, Point::new(x + px, field_rect.mid_y()));
                 svg_doc = svg_doc.add(label);
             }
         }
@@ -143,33 +142,12 @@ impl Renderer for SVGRenderer {
 }
 
 impl SVGRenderer {
-    /// Returns the distance between text origin (top-left) and baseline.
-    ///
-    /// ```svgbob
-    ///  o
-    ///  !
-    ///  !
-    ///  v
-    ///  +-------------
-    /// ```
-    ///
-    fn text_height(size: &mir::FontSize) -> f32 {
-        match size {
-            mir::FontSize::XXSmall => todo!(),
-            mir::FontSize::XSmall => todo!(),
-            mir::FontSize::Small => todo!(),
-            mir::FontSize::Medium => 22.0,
-            mir::FontSize::Large => todo!(),
-            mir::FontSize::XLarge => todo!(),
-            mir::FontSize::XXLarge => todo!(),
-            mir::FontSize::XXXLarge => todo!(),
-        }
-    }
-
     fn draw_text(&self, span: &mir::TextSpan, origin: Point) -> element::Text {
-        let mut text_baseline = SVGRenderer::text_height(&mir::FontSize::default());
-
-        let mut label = element::Text::new().add(svg::node::Text::new(span.text.clone()));
+        let mut label = element::Text::new()
+            .set("x", origin.x)
+            .set("y", origin.y)
+            .set("dominant-baseline", "middle")
+            .add(svg::node::Text::new(span.text.clone()));
 
         if let Some(text_color) = &span.color {
             label = label.set("fill", text_color.to_string());
@@ -183,11 +161,10 @@ impl SVGRenderer {
 
         // position
         if let Some(font_size) = &span.font_size {
-            text_baseline = SVGRenderer::text_height(font_size);
             label = label.set("font-size", font_size.to_string());
         }
 
-        label.set("x", origin.x).set("y", origin.y + text_baseline)
+        label
     }
 
     fn draw_edge_connection(
