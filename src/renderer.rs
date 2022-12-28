@@ -124,14 +124,26 @@ impl Renderer for SVGRenderer {
                     svg_doc = svg_doc.add(line);
                 }
 
-                // text
-                let text_element =
-                    self.draw_text(&field.title, Point::new(x + px, field_rect.mid_y()));
+                // Renders text elements
+                //
+                // +-------------+-------------+---------+
+                // |<---- 2 ---->|<---- 2 ---->|<-- 1 -->|
+                // | title       |    subtitle |  badge  |
+                // +-------------+-------------+---------+
+                let column_width = field_rect.width() / 5.0;
+                let text_element = self.draw_text(
+                    &field.title,
+                    Point::new(x + px, field_rect.mid_y()),
+                    Some(SVGAnchor::Start),
+                );
                 svg_doc = svg_doc.add(text_element);
 
                 if let Some(subtitle) = &field.subtitle {
-                    let text_element = self
-                        .draw_text(subtitle, Point::new(field_rect.mid_x(), field_rect.mid_y()));
+                    let text_element = self.draw_text(
+                        subtitle,
+                        Point::new(x + column_width * 4.0, field_rect.mid_y()),
+                        Some(SVGAnchor::End),
+                    );
                     svg_doc = svg_doc.add(text_element);
                 }
             }
@@ -148,14 +160,40 @@ impl Renderer for SVGRenderer {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum SVGAnchor {
+    Start,
+    #[allow(dead_code)]
+    Middle,
+    End,
+}
+
+impl SVGAnchor {
+    pub fn text_anchor(&self) -> String {
+        match self {
+            SVGAnchor::Start => "start".into(),
+            SVGAnchor::Middle => "middle".into(),
+            SVGAnchor::End => "end".into(),
+        }
+    }
+}
+
 impl SVGRenderer {
-    fn draw_text(&self, span: &mir::TextSpan, origin: Point) -> element::Text {
+    fn draw_text(
+        &self,
+        span: &mir::TextSpan,
+        origin: Point,
+        text_anchor: Option<SVGAnchor>,
+    ) -> element::Text {
         let mut label = element::Text::new()
             .set("x", origin.x)
             .set("y", origin.y)
             .set("dominant-baseline", "middle")
             .add(svg::node::Text::new(span.text.clone()));
 
+        if let Some(text_anchor) = text_anchor {
+            label = label.set("text-anchor", text_anchor.text_anchor());
+        }
         if let Some(text_color) = &span.color {
             label = label.set("fill", text_color.to_string());
         }
