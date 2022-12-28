@@ -124,15 +124,53 @@ impl Renderer for SVGRenderer {
                     svg_doc = svg_doc.add(line);
                 }
 
-                // text
-                let text_element =
-                    self.draw_text(&field.name, Point::new(x + px, field_rect.mid_y()));
+                // Renders text elements
+                //
+                // ```svgbob
+                // +-------------+-------------+---------+
+                // |<---- 2 ---->|<---- 2 ---->|<-- 1 -->|
+                // | title       |    subtitle |  badge  |
+                // +-------------+-------------+---------+
+                // ```
+                let column_width = field_rect.width() / 5.0;
+
+                // title
+                let text_element = self.draw_text(
+                    &field.title,
+                    Point::new(x + px, field_rect.mid_y()),
+                    Some(SVGAnchor::Start),
+                );
                 svg_doc = svg_doc.add(text_element);
 
-                if let Some(type_text) = &field.r#type {
+                // subtitle
+                if let Some(subtitle) = &field.subtitle {
                     let text_element = self.draw_text(
-                        type_text,
-                        Point::new(field_rect.mid_x(), field_rect.mid_y()),
+                        subtitle,
+                        Point::new(x + column_width * 4.0, field_rect.mid_y()),
+                        Some(SVGAnchor::End),
+                    );
+                    svg_doc = svg_doc.add(text_element);
+                }
+
+                // badge
+                if let Some(badge) = &field.badge {
+                    let rx = field_rect.max_x() - px;
+                    let cy = field_rect.mid_y();
+                    let bg_radius = (field_rect.height() / 2.0) - 6.0;
+
+                    if let Some(bg_color) = &badge.bg_color {
+                        let bg_element = element::Circle::new()
+                            .set("cx", rx - bg_radius)
+                            .set("cy", cy)
+                            .set("r", bg_radius)
+                            .set("fill", bg_color.to_string());
+                        svg_doc = svg_doc.add(bg_element);
+                    }
+
+                    let text_element = self.draw_text(
+                        &badge.into_text_span(),
+                        Point::new(rx - bg_radius, cy),
+                        Some(SVGAnchor::Middle),
                     );
                     svg_doc = svg_doc.add(text_element);
                 }
@@ -150,14 +188,40 @@ impl Renderer for SVGRenderer {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum SVGAnchor {
+    Start,
+    #[allow(dead_code)]
+    Middle,
+    End,
+}
+
+impl SVGAnchor {
+    pub fn text_anchor(&self) -> String {
+        match self {
+            SVGAnchor::Start => "start".into(),
+            SVGAnchor::Middle => "middle".into(),
+            SVGAnchor::End => "end".into(),
+        }
+    }
+}
+
 impl SVGRenderer {
-    fn draw_text(&self, span: &mir::TextSpan, origin: Point) -> element::Text {
+    fn draw_text(
+        &self,
+        span: &mir::TextSpan,
+        origin: Point,
+        text_anchor: Option<SVGAnchor>,
+    ) -> element::Text {
         let mut label = element::Text::new()
             .set("x", origin.x)
             .set("y", origin.y)
             .set("dominant-baseline", "middle")
             .add(svg::node::Text::new(span.text.clone()));
 
+        if let Some(text_anchor) = text_anchor {
+            label = label.set("text-anchor", text_anchor.text_anchor());
+        }
         if let Some(text_color) = &span.color {
             label = label.set("fill", text_color.to_string());
         }

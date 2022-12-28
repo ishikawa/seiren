@@ -159,22 +159,18 @@ pub struct BodyNode {}
 #[builder(default)]
 pub struct RecordNode {
     pub rounded: bool,
-    #[builder(setter(strip_option))]
     pub bg_color: Option<WebColor>,
-    #[builder(setter(strip_option))]
     pub border_color: Option<WebColor>,
 }
 
 #[derive(Debug, Clone, Default, Builder)]
 #[builder(default)]
 pub struct FieldNode {
-    pub name: TextSpan,
-    #[builder(setter(strip_option))]
+    pub title: TextSpan,
+    pub subtitle: Option<TextSpan>,
+    pub badge: Option<Badge>,
     pub bg_color: Option<WebColor>,
-    #[builder(setter(strip_option))]
     pub border_color: Option<WebColor>,
-    #[builder(setter(strip_option))]
-    pub r#type: Option<TextSpan>,
 }
 
 #[derive(Debug, Clone, Default, Builder)]
@@ -182,18 +178,41 @@ pub struct FieldNode {
 pub struct TextSpan {
     #[builder(setter(into))]
     pub text: String,
-    #[builder(setter(strip_option))]
     pub color: Option<WebColor>,
-    #[builder(setter(strip_option))]
     pub font_family: Option<FontFamily>,
-    #[builder(setter(strip_option))]
     pub font_weight: Option<FontWeight>,
-    #[builder(setter(strip_option))]
     pub font_size: Option<FontSize>,
+}
+
+#[derive(Debug, Clone, Default, Builder)]
+#[builder(default)]
+pub struct Badge {
+    #[builder(setter(into))]
+    pub text: String,
+    pub color: Option<WebColor>,
+    pub bg_color: Option<WebColor>,
+}
+
+impl Badge {
+    pub fn into_text_span(&self) -> TextSpan {
+        TextSpanBuilder::default()
+            .text(self.text.to_string())
+            .color(self.color.clone())
+            .font_family(Some(FontFamily::SansSerif3))
+            .font_size(Some(FontSize::XXSmall))
+            .build()
+            .unwrap()
+    }
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Display)]
 pub enum FontFamily {
+    #[display(fmt = "Arial,sans-serif")]
+    SansSerif1,
+    #[display(fmt = "Verdana,sans-serif")]
+    SansSerif2,
+    #[display(fmt = "Trebuchet MS,sans-serif")]
+    SansSerif3,
     #[display(fmt = "Monaco,Lucida Console,monospace")]
     Monospace1,
     #[display(fmt = "Courier New,monospace")]
@@ -271,8 +290,8 @@ mod tests {
     fn build_doc() {
         let mut doc = Document::new();
 
-        let name = TextSpanBuilder::default().text("id").build().unwrap();
-        let field = FieldNodeBuilder::default().name(name).build().unwrap();
+        let title = TextSpanBuilder::default().text("id").build().unwrap();
+        let field = FieldNodeBuilder::default().title(title).build().unwrap();
 
         let node_id = doc.create_field(field);
 
@@ -282,19 +301,19 @@ mod tests {
         let node = node.unwrap();
         let NodeKind::Field(field) = &node.kind else { panic!() };
 
-        assert_eq!(field.name.text, "id");
+        assert_eq!(field.title.text, "id");
 
         // mutate
         {
             let node = doc.get_node_mut(&node_id).unwrap();
             let NodeKind::Field(field) = &mut node.kind else { panic!() };
 
-            field.name.text = "uuid".to_string();
+            field.title.text = "uuid".to_string();
         }
 
         let node = doc.get_node(&node_id).unwrap();
         let NodeKind::Field(field) = &node.kind else { panic!() };
 
-        assert_eq!(field.name.text, "uuid");
+        assert_eq!(field.title.text, "uuid");
     }
 }
