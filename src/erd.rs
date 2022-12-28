@@ -6,8 +6,8 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct ERDiagram {
-    pub tables: Vec<Table>,
-    pub relations: Vec<Relation>,
+    tables: Vec<Table>,
+    relations: Vec<Relation>,
 }
 
 impl ERDiagram {
@@ -18,8 +18,20 @@ impl ERDiagram {
         }
     }
 
-    pub fn find_table(&self, name: &str) -> Option<&Table> {
-        self.tables.iter().find(|t| t.name() == name)
+    pub fn tables(&self) -> impl ExactSizeIterator<Item = &Table> {
+        self.tables.iter()
+    }
+
+    pub fn relations(&self) -> impl ExactSizeIterator<Item = &Relation> {
+        self.relations.iter()
+    }
+
+    pub fn add_table(&mut self, table: Table) {
+        self.tables.push(table);
+    }
+
+    pub fn add_relation(&mut self, relation: Relation) {
+        self.relations.push(relation);
     }
 
     pub fn into_mir(&self) -> mir::Document {
@@ -148,7 +160,7 @@ impl ERDiagram {
 #[derive(Debug, Clone)]
 pub struct Table {
     name: String,
-    pub columns: Vec<Column>,
+    columns: Vec<Column>,
 }
 
 impl Table {
@@ -163,8 +175,12 @@ impl Table {
         &self.name
     }
 
-    pub fn find_column(&self, name: &str) -> Option<&Column> {
-        self.columns.iter().find(|c| c.name() == name)
+    pub fn columns(&self) -> impl ExactSizeIterator<Item = &Column> {
+        self.columns.iter()
+    }
+
+    pub fn add_column(&mut self, column: Column) {
+        self.columns.push(column);
     }
 }
 

@@ -24,55 +24,43 @@ fn demo_erd() -> Document {
     let mut posts_table = Table::new("posts".into());
 
     // users
-    users_table.columns.push(Column::new(
+    users_table.add_column(Column::new(
         "id".into(),
         ColumnType::Int,
         Some(ColumnKey::PrimaryKey),
     ));
-    users_table
-        .columns
-        .push(Column::new("uuid".into(), ColumnType::UUID, None));
-    users_table
-        .columns
-        .push(Column::new("email".into(), ColumnType::Text, None));
-    users_table
-        .columns
-        .push(Column::new("about_html".into(), ColumnType::Text, None));
-    users_table.columns.push(Column::new(
+    users_table.add_column(Column::new("uuid".into(), ColumnType::UUID, None));
+    users_table.add_column(Column::new("email".into(), ColumnType::Text, None));
+    users_table.add_column(Column::new("about_html".into(), ColumnType::Text, None));
+    users_table.add_column(Column::new(
         "created_at".into(),
         ColumnType::Timestamp,
         None,
     ));
 
     // posts
-    posts_table.columns.push(Column::new(
+    posts_table.add_column(Column::new(
         "id".into(),
         ColumnType::Int,
         Some(ColumnKey::PrimaryKey),
     ));
-    posts_table
-        .columns
-        .push(Column::new("uuid".into(), ColumnType::UUID, None));
-    posts_table
-        .columns
-        .push(Column::new("title".into(), ColumnType::Text, None));
-    posts_table
-        .columns
-        .push(Column::new("content".into(), ColumnType::Text, None));
-    posts_table.columns.push(Column::new(
+    posts_table.add_column(Column::new("uuid".into(), ColumnType::UUID, None));
+    posts_table.add_column(Column::new("title".into(), ColumnType::Text, None));
+    posts_table.add_column(Column::new("content".into(), ColumnType::Text, None));
+    posts_table.add_column(Column::new(
         "created_at".into(),
         ColumnType::Timestamp,
         None,
     ));
-    posts_table.columns.push(Column::new(
+    posts_table.add_column(Column::new(
         "created_by".into(),
         ColumnType::Int,
         Some(ColumnKey::ForeginKey),
     ));
 
-    diagram.tables.push(users_table);
-    diagram.tables.push(posts_table);
-    diagram.relations.push(Relation::new(
+    diagram.add_table(users_table);
+    diagram.add_table(posts_table);
+    diagram.add_relation(Relation::new(
         RelationPath::Column("posts".into(), "created_by".into()),
         RelationPath::Column("users".into(), "id".into()),
     ));
