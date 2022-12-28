@@ -172,6 +172,8 @@ pub struct FieldNode {
     #[builder(setter(strip_option))]
     pub subtitle: Option<TextSpan>,
     #[builder(setter(strip_option))]
+    pub badge: Option<Badge>,
+    #[builder(setter(strip_option))]
     pub bg_color: Option<WebColor>,
     #[builder(setter(strip_option))]
     pub border_color: Option<WebColor>,
@@ -190,6 +192,17 @@ pub struct TextSpan {
     pub font_weight: Option<FontWeight>,
     #[builder(setter(strip_option))]
     pub font_size: Option<FontSize>,
+}
+
+#[derive(Debug, Clone, Default, Builder)]
+#[builder(default)]
+pub struct Badge {
+    #[builder(setter(into))]
+    pub text: String,
+    #[builder(setter(strip_option))]
+    pub color: Option<WebColor>,
+    #[builder(setter(strip_option))]
+    pub bg_color: Option<WebColor>,
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Display)]

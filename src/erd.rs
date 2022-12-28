@@ -168,7 +168,7 @@ impl Table {
     }
 }
 
-#[derive(Debug, Clone, Copy, Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
 pub enum ColumnType {
     #[display(fmt = "int")]
     Int,
@@ -180,19 +180,36 @@ pub enum ColumnType {
     Timestamp,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
+pub enum ColumnKey {
+    #[display(fmt = "PK")]
+    PrimaryKey,
+    #[display(fmt = "FK")]
+    ForeginKey,
+}
+
 #[derive(Debug, Clone)]
 pub struct Column {
     name: String,
-    pub r#type: ColumnType,
+    r#type: ColumnType,
+    key: Option<ColumnKey>,
 }
 
 impl Column {
-    pub fn new(name: String, r#type: ColumnType) -> Self {
-        Self { name, r#type }
+    pub fn new(name: String, r#type: ColumnType, key: Option<ColumnKey>) -> Self {
+        Self { name, r#type, key }
     }
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn column_type(&self) -> &ColumnType {
+        &self.r#type
+    }
+
+    pub fn column_key(&self) -> Option<&ColumnKey> {
+        self.key.as_ref()
     }
 }
 
