@@ -48,14 +48,14 @@ impl ERDiagram {
             let header_node_id = {
                 let name = mir::TextSpanBuilder::default()
                     .text(table.name())
-                    .color(text_color.clone())
-                    .font_family(mir::FontFamily::Monospace1)
-                    .font_weight(mir::FontWeight::Bold)
+                    .color(Some(text_color.clone()))
+                    .font_family(Some(mir::FontFamily::Monospace1))
+                    .font_weight(Some(mir::FontWeight::Bold))
                     .build()
                     .unwrap();
                 let field = mir::FieldNodeBuilder::default()
                     .title(name)
-                    .bg_color(light_gray_color.clone())
+                    .bg_color(Some(light_gray_color.clone()))
                     .build()
                     .unwrap();
 
@@ -64,8 +64,8 @@ impl ERDiagram {
 
             let record = mir::RecordNodeBuilder::default()
                 .rounded(true)
-                .bg_color(table_bg_color.clone())
-                .border_color(table_border_color.clone())
+                .bg_color(Some(table_bg_color.clone()))
+                .border_color(Some(table_border_color.clone()))
                 .build()
                 .unwrap();
 
@@ -75,25 +75,26 @@ impl ERDiagram {
                 .map(|column| {
                     let name = mir::TextSpanBuilder::default()
                         .text(column.name())
-                        .color(text_color.clone())
-                        .font_family(mir::FontFamily::Monospace2)
-                        .font_weight(mir::FontWeight::Lighter)
+                        .color(Some(text_color.clone()))
+                        .font_family(Some(mir::FontFamily::Monospace2))
+                        .font_weight(Some(mir::FontWeight::Lighter))
                         .build()
                         .unwrap();
 
                     let column_type = mir::TextSpanBuilder::default()
-                        .text(column.r#type.to_string())
-                        .color(ERDiagram::column_type_color(&column.r#type))
-                        .font_family(mir::FontFamily::Monospace2)
-                        .font_weight(mir::FontWeight::Lighter)
-                        .font_size(mir::FontSize::Small)
+                        .text(column.column_type().to_string())
+                        .color(Some(ERDiagram::column_type_color(&column.r#type)))
+                        .font_family(Some(mir::FontFamily::Monospace2))
+                        .font_weight(Some(mir::FontWeight::Lighter))
+                        .font_size(Some(mir::FontSize::Small))
                         .build()
                         .unwrap();
 
                     let field = mir::FieldNodeBuilder::default()
                         .title(name)
-                        .subtitle(column_type)
-                        .border_color(table_border_color.clone())
+                        .subtitle(Some(column_type))
+                        .border_color(Some(table_border_color.clone()))
+                        .badge(column.column_key().map(|key| key.into_mir()))
                         .build()
                         .unwrap();
 
@@ -198,10 +199,42 @@ pub enum ColumnType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
 pub enum ColumnKey {
-    #[display(fmt = "PK")]
+    #[display(fmt = "Primary Key")]
     PrimaryKey,
-    #[display(fmt = "FK")]
+    #[display(fmt = "Foregin Key")]
     ForeginKey,
+}
+
+impl ColumnKey {
+    pub fn into_mir(&self) -> mir::Badge {
+        mir::BadgeBuilder::default()
+            .text(self.badge_text())
+            .color(Some(self.badge_text_color()))
+            .bg_color(Some(self.badge_bg_color()))
+            .build()
+            .unwrap()
+    }
+
+    fn badge_text(&self) -> String {
+        match self {
+            ColumnKey::PrimaryKey => "PK".into(),
+            ColumnKey::ForeginKey => "FK".into(),
+        }
+    }
+
+    fn badge_text_color(&self) -> WebColor {
+        match self {
+            ColumnKey::PrimaryKey => WebColor::Named(NamedColor::White),
+            ColumnKey::ForeginKey => WebColor::RGB(RGBColor::new(17, 112, 251)),
+        }
+    }
+
+    fn badge_bg_color(&self) -> WebColor {
+        match self {
+            ColumnKey::PrimaryKey => WebColor::RGB(RGBColor::new(55, 55, 55)),
+            ColumnKey::ForeginKey => WebColor::RGB(RGBColor::new(32, 41, 55)),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

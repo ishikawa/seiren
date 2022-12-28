@@ -159,9 +159,7 @@ pub struct BodyNode {}
 #[builder(default)]
 pub struct RecordNode {
     pub rounded: bool,
-    #[builder(setter(strip_option))]
     pub bg_color: Option<WebColor>,
-    #[builder(setter(strip_option))]
     pub border_color: Option<WebColor>,
 }
 
@@ -169,13 +167,9 @@ pub struct RecordNode {
 #[builder(default)]
 pub struct FieldNode {
     pub title: TextSpan,
-    #[builder(setter(strip_option))]
     pub subtitle: Option<TextSpan>,
-    #[builder(setter(strip_option))]
     pub badge: Option<Badge>,
-    #[builder(setter(strip_option))]
     pub bg_color: Option<WebColor>,
-    #[builder(setter(strip_option))]
     pub border_color: Option<WebColor>,
 }
 
@@ -184,13 +178,9 @@ pub struct FieldNode {
 pub struct TextSpan {
     #[builder(setter(into))]
     pub text: String,
-    #[builder(setter(strip_option))]
     pub color: Option<WebColor>,
-    #[builder(setter(strip_option))]
     pub font_family: Option<FontFamily>,
-    #[builder(setter(strip_option))]
     pub font_weight: Option<FontWeight>,
-    #[builder(setter(strip_option))]
     pub font_size: Option<FontSize>,
 }
 
@@ -199,14 +189,30 @@ pub struct TextSpan {
 pub struct Badge {
     #[builder(setter(into))]
     pub text: String,
-    #[builder(setter(strip_option))]
     pub color: Option<WebColor>,
-    #[builder(setter(strip_option))]
     pub bg_color: Option<WebColor>,
+}
+
+impl Badge {
+    pub fn into_text_span(&self) -> TextSpan {
+        TextSpanBuilder::default()
+            .text(self.text.to_string())
+            .color(self.color.clone())
+            .font_family(Some(FontFamily::SansSerif3))
+            .font_size(Some(FontSize::XXSmall))
+            .build()
+            .unwrap()
+    }
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Display)]
 pub enum FontFamily {
+    #[display(fmt = "Arial,sans-serif")]
+    SansSerif1,
+    #[display(fmt = "Verdana,sans-serif")]
+    SansSerif2,
+    #[display(fmt = "Trebuchet MS,sans-serif")]
+    SansSerif3,
     #[display(fmt = "Monaco,Lucida Console,monospace")]
     Monospace1,
     #[display(fmt = "Courier New,monospace")]

@@ -115,6 +115,10 @@ id
 <text dominant-baseline=\"middle\" fill=\"#ECC700\" font-family=\"Courier New,monospace\" font-size=\"small\" font-weight=\"lighter\" text-anchor=\"end\" x=\"290\" y=\"132.5\">
 int
 </text>
+<circle cx=\"326.5\" cy=\"132.5\" fill=\"#373737\" r=\"11.5\"/>
+<text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Trebuchet MS,sans-serif\" font-size=\"xx-small\" text-anchor=\"middle\" x=\"326.5\" y=\"132.5\">
+PK
+</text>
 <line stroke=\"#494949\" stroke-width=\"1\" x1=\"50\" x2=\"350\" y1=\"150\" y2=\"150\"/>
 <text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" text-anchor=\"start\" x=\"62\" y=\"167.5\">
 uuid
@@ -155,6 +159,10 @@ id
 <text dominant-baseline=\"middle\" fill=\"#ECC700\" font-family=\"Courier New,monospace\" font-size=\"small\" font-weight=\"lighter\" text-anchor=\"end\" x=\"670\" y=\"132.5\">
 int
 </text>
+<circle cx=\"706.5\" cy=\"132.5\" fill=\"#373737\" r=\"11.5\"/>
+<text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Trebuchet MS,sans-serif\" font-size=\"xx-small\" text-anchor=\"middle\" x=\"706.5\" y=\"132.5\">
+PK
+</text>
 <line stroke=\"#494949\" stroke-width=\"1\" x1=\"430\" x2=\"730\" y1=\"150\" y2=\"150\"/>
 <text dominant-baseline=\"middle\" fill=\"white\" font-family=\"Courier New,monospace\" font-weight=\"lighter\" text-anchor=\"start\" x=\"442\" y=\"167.5\">
 uuid
@@ -189,6 +197,10 @@ created_by
 </text>
 <text dominant-baseline=\"middle\" fill=\"#ECC700\" font-family=\"Courier New,monospace\" font-size=\"small\" font-weight=\"lighter\" text-anchor=\"end\" x=\"670\" y=\"307.5\">
 int
+</text>
+<circle cx=\"706.5\" cy=\"307.5\" fill=\"#202937\" r=\"11.5\"/>
+<text dominant-baseline=\"middle\" fill=\"#1170FB\" font-family=\"Trebuchet MS,sans-serif\" font-size=\"xx-small\" text-anchor=\"middle\" x=\"706.5\" y=\"307.5\">
+FK
 </text>
 <path d=\"M430 307.5 L396 307.5 Q390 307.5 390 301.5 L390 138.5 Q390 132.5 384 132.5 L350 132.5\" fill=\"transparent\" stroke=\"#888888\" stroke-width=\"1.5\"/>
 <circle cx=\"430\" cy=\"307.5\" fill=\"#1C1C1C\" r=\"4\" stroke=\"#888888\" stroke-width=\"1.5\"/>

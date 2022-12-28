@@ -126,11 +126,15 @@ impl Renderer for SVGRenderer {
 
                 // Renders text elements
                 //
+                // ```svgbob
                 // +-------------+-------------+---------+
                 // |<---- 2 ---->|<---- 2 ---->|<-- 1 -->|
                 // | title       |    subtitle |  badge  |
                 // +-------------+-------------+---------+
+                // ```
                 let column_width = field_rect.width() / 5.0;
+
+                // title
                 let text_element = self.draw_text(
                     &field.title,
                     Point::new(x + px, field_rect.mid_y()),
@@ -138,11 +142,35 @@ impl Renderer for SVGRenderer {
                 );
                 svg_doc = svg_doc.add(text_element);
 
+                // subtitle
                 if let Some(subtitle) = &field.subtitle {
                     let text_element = self.draw_text(
                         subtitle,
                         Point::new(x + column_width * 4.0, field_rect.mid_y()),
                         Some(SVGAnchor::End),
+                    );
+                    svg_doc = svg_doc.add(text_element);
+                }
+
+                // badge
+                if let Some(badge) = &field.badge {
+                    let rx = field_rect.max_x() - px;
+                    let cy = field_rect.mid_y();
+                    let bg_radius = (field_rect.height() / 2.0) - 6.0;
+
+                    if let Some(bg_color) = &badge.bg_color {
+                        let bg_element = element::Circle::new()
+                            .set("cx", rx - bg_radius)
+                            .set("cy", cy)
+                            .set("r", bg_radius)
+                            .set("fill", bg_color.to_string());
+                        svg_doc = svg_doc.add(bg_element);
+                    }
+
+                    let text_element = self.draw_text(
+                        &badge.into_text_span(),
+                        Point::new(rx - bg_radius, cy),
+                        Some(SVGAnchor::Middle),
                     );
                     svg_doc = svg_doc.add(text_element);
                 }
