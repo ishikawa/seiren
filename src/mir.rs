@@ -168,13 +168,13 @@ pub struct RecordNode {
 #[derive(Debug, Clone, Default, Builder)]
 #[builder(default)]
 pub struct FieldNode {
-    pub name: TextSpan,
+    pub title: TextSpan,
+    #[builder(setter(strip_option))]
+    pub subtitle: Option<TextSpan>,
     #[builder(setter(strip_option))]
     pub bg_color: Option<WebColor>,
     #[builder(setter(strip_option))]
     pub border_color: Option<WebColor>,
-    #[builder(setter(strip_option))]
-    pub r#type: Option<TextSpan>,
 }
 
 #[derive(Debug, Clone, Default, Builder)]
@@ -271,8 +271,8 @@ mod tests {
     fn build_doc() {
         let mut doc = Document::new();
 
-        let name = TextSpanBuilder::default().text("id").build().unwrap();
-        let field = FieldNodeBuilder::default().name(name).build().unwrap();
+        let title = TextSpanBuilder::default().text("id").build().unwrap();
+        let field = FieldNodeBuilder::default().title(title).build().unwrap();
 
         let node_id = doc.create_field(field);
 
@@ -282,19 +282,19 @@ mod tests {
         let node = node.unwrap();
         let NodeKind::Field(field) = &node.kind else { panic!() };
 
-        assert_eq!(field.name.text, "id");
+        assert_eq!(field.title.text, "id");
 
         // mutate
         {
             let node = doc.get_node_mut(&node_id).unwrap();
             let NodeKind::Field(field) = &mut node.kind else { panic!() };
 
-            field.name.text = "uuid".to_string();
+            field.title.text = "uuid".to_string();
         }
 
         let node = doc.get_node(&node_id).unwrap();
         let NodeKind::Field(field) = &node.kind else { panic!() };
 
-        assert_eq!(field.name.text, "uuid");
+        assert_eq!(field.title.text, "uuid");
     }
 }

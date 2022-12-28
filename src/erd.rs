@@ -42,7 +42,7 @@ impl ERDiagram {
                     .build()
                     .unwrap();
                 let field = mir::FieldNodeBuilder::default()
-                    .name(name)
+                    .title(name)
                     .bg_color(light_gray_color.clone())
                     .build()
                     .unwrap();
@@ -69,7 +69,7 @@ impl ERDiagram {
                         .build()
                         .unwrap();
 
-                    let r#type = mir::TextSpanBuilder::default()
+                    let column_type = mir::TextSpanBuilder::default()
                         .text(column.r#type.to_string())
                         .color(ERDiagram::column_type_color(&column.r#type))
                         .font_family(mir::FontFamily::Monospace2)
@@ -79,8 +79,8 @@ impl ERDiagram {
                         .unwrap();
 
                     let field = mir::FieldNodeBuilder::default()
-                        .name(name)
-                        .r#type(r#type)
+                        .title(name)
+                        .subtitle(column_type)
                         .border_color(table_border_color.clone())
                         .build()
                         .unwrap();
