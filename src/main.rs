@@ -2,7 +2,7 @@ use std::io;
 use std::{fs, io::Read};
 
 use chumsky::Parser;
-use seiren::parser::relation;
+use seiren::parser::parser;
 
 fn main() -> Result<(), io::Error> {
     let mut args = std::env::args();
@@ -17,7 +17,12 @@ fn main() -> Result<(), io::Error> {
         s
     };
 
-    println!("{:?}", relation().parse(src));
+    let r = parser().parse(src);
+    println!("{:?}", r);
+    if let Ok(r) = r {
+        println!("{}", r);
+    }
+
     Ok(())
 }
 
