@@ -5,13 +5,18 @@ ERD module EBNF
 TODO: Follow UAX31 Default Identifier <https://www.unicode.org/reports/tr31/tr31-37.html#Default_Identifier_Syntax>
 
 ```ebnf
-program = SP, relation, SP ;
-relation = entity, { SP, edge, SP, entity };
+program = SP, { erd_diagram }, SP ;
+erd_diagram = "erd", SP, [ identifier, SP ], "{", stmts, "}" ;
+stmts = [ stmt ], { SEP, stmt } ;
+stmt = SP, ( entity_definition | relation ), SP ;
+entity_definition = identifier, SP, "{", fields, "}" ;
+fields = [ field ], { SEP, field } ;
+field = SP, identifier, SP, field_type, [ SP, field_key ], SP ;
+field_type = "int" | "uuid" | "text" | "timestamp" ;
+field_key = "PK" | "FK" ;
+relation = entity, { SP, edge, SP, entity } ;
 entity = identifier, [ ".", identifier ] ;
-edge = left_connector, edge_path, right_connector ;
-left_connector = "o" ;
-right_connector = "o" ;
-edge_path = "--" ;
+edge = "o", "--", "o" ;
 identifier = identifier_start, { identifier_continue } ;
 identifier_start = "_" | letter ;
 identifier_continue = "_" | letter | digit ;
@@ -19,6 +24,7 @@ letter = ? a-zA-Z ? ;
 digit = ? 0-9 ? ;
 whitespace = ? whitespace ? ;
 SP = { whitespace } ;
+SEP = "\n" | "\r\n" ;
 ```
 */
 
