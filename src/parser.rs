@@ -32,6 +32,11 @@ use chumsky::prelude::*;
 use derive_more::Display;
 
 #[derive(Debug, Display)]
+pub enum Stmt {
+    Expr(Expr),
+}
+
+#[derive(Debug, Display)]
 pub enum Expr {
     #[display(fmt = "({} o--o {})", _0, _1)]
     Relation(Box<Expr>, Box<Expr>),
@@ -47,8 +52,12 @@ pub enum EntityPath {
     Column(String, String),
 }
 
-pub fn parser() -> impl Parser<char, Expr, Error = Simple<char>> {
-    relation().padded().then_ignore(end())
+pub fn parser() -> impl Parser<char, Stmt, Error = Simple<char>> {
+    stmt().padded().then_ignore(end())
+}
+
+fn stmt() -> impl Parser<char, Stmt, Error = Simple<char>> {
+    relation().padded().map(|expr| Stmt::Expr(expr))
 }
 
 fn relation() -> impl Parser<char, Expr, Error = Simple<char>> {
