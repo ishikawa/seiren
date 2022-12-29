@@ -1,85 +1,89 @@
 use std::io;
+use std::{fs, io::Read};
 
-use seiren::{
-    erd::{Column, ColumnKey, ColumnType, ERDiagram, Relation, RelationPath, Table},
-    layout::{LayoutEngine, SimpleLayoutEngine},
-    mir::Document,
-    renderer::{Renderer, SVGRenderer},
-};
+fn main() -> Result<(), io::Error> {
+    let mut args = std::env::args();
 
-fn main() {
-    let doc = demo_erd();
-    let backend = SVGRenderer::new();
-    let stdout = io::stdout();
-    let mut handle = stdout.lock();
+    // Read the contents of a specified file or from stdio.
+    let src = if args.len() > 0 {
+        let path = args.nth(1).unwrap();
+        fs::read_to_string(path)?
+    } else {
+        let mut s = String::new();
+        io::stdin().read_to_string(&mut s)?;
+        s
+    };
 
-    backend
-        .render(&doc, &mut handle)
-        .expect("cannot generate SVG");
-}
-
-fn demo_erd() -> Document {
-    let mut diagram = ERDiagram::new();
-    let mut users_table = Table::new("users".into());
-    let mut posts_table = Table::new("posts".into());
-
-    // users
-    users_table.add_column(Column::new(
-        "id".into(),
-        ColumnType::Int,
-        Some(ColumnKey::PrimaryKey),
-    ));
-    users_table.add_column(Column::new("uuid".into(), ColumnType::UUID, None));
-    users_table.add_column(Column::new("email".into(), ColumnType::Text, None));
-    users_table.add_column(Column::new("about_html".into(), ColumnType::Text, None));
-    users_table.add_column(Column::new(
-        "created_at".into(),
-        ColumnType::Timestamp,
-        None,
-    ));
-
-    // posts
-    posts_table.add_column(Column::new(
-        "id".into(),
-        ColumnType::Int,
-        Some(ColumnKey::PrimaryKey),
-    ));
-    posts_table.add_column(Column::new("uuid".into(), ColumnType::UUID, None));
-    posts_table.add_column(Column::new("title".into(), ColumnType::Text, None));
-    posts_table.add_column(Column::new("content".into(), ColumnType::Text, None));
-    posts_table.add_column(Column::new(
-        "created_at".into(),
-        ColumnType::Timestamp,
-        None,
-    ));
-    posts_table.add_column(Column::new(
-        "created_by".into(),
-        ColumnType::Int,
-        Some(ColumnKey::ForeginKey),
-    ));
-
-    diagram.add_table(users_table);
-    diagram.add_table(posts_table);
-    diagram.add_relation(Relation::new(
-        RelationPath::Column("posts".into(), "created_by".into()),
-        RelationPath::Column("users".into(), "id".into()),
-    ));
-
-    let mut doc = diagram.into_mir();
-    let engine = SimpleLayoutEngine::new();
-
-    engine.place_nodes(&mut doc);
-    engine.place_connection_points(&mut doc);
-    engine.draw_edge_path(&mut doc);
-
-    doc
+    println!("{}", src);
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::demo_erd;
     use difference::assert_diff;
-    use seiren::renderer::{Renderer, SVGRenderer};
+    use seiren::{
+        erd::{Column, ColumnKey, ColumnType, ERDiagram, Relation, RelationPath, Table},
+        layout::{LayoutEngine, SimpleLayoutEngine},
+        mir::Document,
+        renderer::{Renderer, SVGRenderer},
+    };
+
+    fn demo_erd() -> Document {
+        let mut diagram = ERDiagram::new();
+        let mut users_table = Table::new("users".into());
+        let mut posts_table = Table::new("posts".into());
+
+        // users
+        users_table.add_column(Column::new(
+            "id".into(),
+            ColumnType::Int,
+            Some(ColumnKey::PrimaryKey),
+        ));
+        users_table.add_column(Column::new("uuid".into(), ColumnType::UUID, None));
+        users_table.add_column(Column::new("email".into(), ColumnType::Text, None));
+        users_table.add_column(Column::new("about_html".into(), ColumnType::Text, None));
+        users_table.add_column(Column::new(
+            "created_at".into(),
+            ColumnType::Timestamp,
+            None,
+        ));
+
+        // posts
+        posts_table.add_column(Column::new(
+            "id".into(),
+            ColumnType::Int,
+            Some(ColumnKey::PrimaryKey),
+        ));
+        posts_table.add_column(Column::new("uuid".into(), ColumnType::UUID, None));
+        posts_table.add_column(Column::new("title".into(), ColumnType::Text, None));
+        posts_table.add_column(Column::new("content".into(), ColumnType::Text, None));
+        posts_table.add_column(Column::new(
+            "created_at".into(),
+            ColumnType::Timestamp,
+            None,
+        ));
+        posts_table.add_column(Column::new(
+            "created_by".into(),
+            ColumnType::Int,
+            Some(ColumnKey::ForeginKey),
+        ));
+
+        diagram.add_table(users_table);
+        diagram.add_table(posts_table);
+        diagram.add_relation(Relation::new(
+            RelationPath::Column("posts".into(), "created_by".into()),
+            RelationPath::Column("users".into(), "id".into()),
+        ));
+
+        let mut doc = diagram.into_mir();
+        let engine = SimpleLayoutEngine::new();
+
+        engine.place_nodes(&mut doc);
+        engine.place_connection_points(&mut doc);
+        engine.draw_edge_path(&mut doc);
+
+        doc
+    }
 
     #[test]
     fn demo_svg() {
