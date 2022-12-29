@@ -1,11 +1,14 @@
 use std::io;
 use std::{fs, io::Read};
 
+use chumsky::Parser;
+use seiren::parser::relation;
+
 fn main() -> Result<(), io::Error> {
     let mut args = std::env::args();
 
     // Read the contents of a specified file or from stdio.
-    let src = if args.len() > 0 {
+    let src = if args.len() >= 2 {
         let path = args.nth(1).unwrap();
         fs::read_to_string(path)?
     } else {
@@ -14,7 +17,7 @@ fn main() -> Result<(), io::Error> {
         s
     };
 
-    println!("{}", src);
+    println!("{:?}", relation().parse(src));
     Ok(())
 }
 
