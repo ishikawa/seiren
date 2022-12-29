@@ -20,7 +20,8 @@ fn main() -> Result<(), io::Error> {
     let r = parser().parse(src);
     println!("{:?}", r);
     if let Ok(r) = r {
-        println!("{}", r);
+        let s: Vec<_> = r.iter().map(|x| x.to_string()).collect();
+        println!("{}", s.join("\n"));
     }
 
     Ok(())
