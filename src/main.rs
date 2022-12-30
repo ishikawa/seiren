@@ -1,8 +1,6 @@
+use seiren::parser::parse;
 use std::io;
 use std::{fs, io::Read};
-
-use chumsky::Parser;
-use seiren::parser::parser;
 
 fn main() -> Result<(), io::Error> {
     let mut args = std::env::args();
@@ -17,10 +15,11 @@ fn main() -> Result<(), io::Error> {
         s
     };
 
-    let r = parser().parse(src);
-    println!("{:?}", r);
-    if let Ok(r) = r {
-        println!("{}", r);
+    let (ast, errs, parse_errs) = parse(&src);
+
+    println!("{:?} - {:?}", errs, parse_errs);
+    if let Some(ast) = ast {
+        println!("{}", ast);
     }
 
     Ok(())
