@@ -151,7 +151,7 @@ impl ERDiagram {
 
         match column_type {
             ColumnType::Int => yellow.clone(),
-            ColumnType::UUID => yellow.clone(),
+            ColumnType::Uuid => yellow.clone(),
             ColumnType::Text => orange.clone(),
             ColumnType::Timestamp => green.clone(),
         }
@@ -190,7 +190,7 @@ pub enum ColumnType {
     #[display(fmt = "int")]
     Int,
     #[display(fmt = "uuid")]
-    UUID,
+    Uuid,
     #[display(fmt = "text")]
     Text,
     #[display(fmt = "timestamp")]

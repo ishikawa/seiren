@@ -5,11 +5,13 @@ ERD module EBNF
 TODO: Follow UAX31 Default Identifier <https://www.unicode.org/reports/tr31/tr31-37.html#Default_Identifier_Syntax>
 
 ```ebnf
-program = PAD, { erd_diagram }, PAD ;
-erd_diagram = "erd", PAD, [ identifier, PAD ], "{", stmts, "}" ;
-stmts = PAD, stmt, { SP, SEP, PAD, stmt }, PAD
-      | EMPTY ;
-stmt = ( entity_definition | relation ) ;
+program = PAD, erd_module, PAD ;
+erd_module = "erd", PAD, [ identifier, PAD ], "{", PAD, module_entries, PAD, "}", PAD ;
+module_entries = module_entry, { SP, SEP, PAD, module_entry }
+               | EMPTY
+module_entry = definition | stmt ;
+definition = entity_definition ;
+stmt = relation ;
 entity_definition = identifier, PAD, "{", entity_fields, "}" ;
 entity_fields = PAD, entity_field, { SP, SEP, PAD, entity_field }, PAD
               | EMPTY ;
@@ -25,7 +27,7 @@ identifier_continue = "_" | letter | digit ;
 letter = ? a-zA-Z ? ;
 digit = ? 0-9 ? ;
 whitespace = ? whitespace ? ;
-newline = ? newline ? ;
+newline = "\n" | "\r\n" ;
 PAD = { whitespace | newline } ;
 SP = { whitespace } ;
 SEP = newline | ";" ;
@@ -41,10 +43,37 @@ use derive_more::Display;
 
 use crate::erd::{ColumnKey, ColumnType};
 
-#[derive(Debug, Display)]
+#[derive(Debug, Builder)]
+pub struct ErdModule {
+    pub name: Option<String>,
+    #[builder(setter(each(name = "entry")))]
+    pub entries: Vec<ModuleEntry>,
+}
+
+impl fmt::Display for ErdModule {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "erd {{")?;
+        for entry in self.entries.iter() {
+            writeln!(f, "  {}", entry)?;
+        }
+        write!(f, "}}")
+    }
+}
+
+#[derive(Debug, Clone, Display)]
+pub enum ModuleEntry {
+    Definition(Definition),
+    Stmt(Stmt),
+}
+
+#[derive(Debug, Clone, Display)]
+pub enum Definition {
+    EntityDefinition(EntityDefinition),
+}
+
+#[derive(Debug, Clone, Display)]
 pub enum Stmt {
     Expr(Expr),
-    EntityDefinition(EntityDefinition),
 }
 
 #[derive(Debug, Clone, Default, Builder)]
@@ -93,7 +122,7 @@ impl fmt::Display for EntityField {
     }
 }
 
-#[derive(Debug, Display)]
+#[derive(Debug, Clone, Display)]
 pub enum Expr {
     #[display(fmt = "({} o--o {})", _0, _1)]
     Relation(Box<Expr>, Box<Expr>),
@@ -101,7 +130,7 @@ pub enum Expr {
     Entity(EntityPath),
 }
 
-#[derive(Debug, Display)]
+#[derive(Debug, Clone, Display)]
 pub enum EntityPath {
     #[display(fmt = "{}", _0)]
     Table(String),
@@ -109,8 +138,8 @@ pub enum EntityPath {
     Column(String, String),
 }
 
-pub fn parser() -> impl Parser<char, Vec<Stmt>, Error = Simple<char>> {
-    stmts().padded().then_ignore(end())
+pub fn parser() -> impl Parser<char, ErdModule, Error = Simple<char>> {
+    erd_module().padded().then_ignore(end())
 }
 
 fn spaces() -> impl Parser<char, String, Error = Simple<char>> {
@@ -123,25 +152,47 @@ fn separator() -> impl Parser<char, String, Error = Simple<char>> {
     choice((just("\n"), just("\r\n"), just(";"))).map(|x| x.to_string())
 }
 
-fn stmts() -> impl Parser<char, Vec<Stmt>, Error = Simple<char>> {
-    stmt()
+fn erd_module() -> impl Parser<char, ErdModule, Error = Simple<char>> {
+    just("erd")
+        .ignore_then(text::ident().padded().or_not())
+        .then_ignore(just("{").padded())
+        .then(module_entries())
+        .then_ignore(just("}").padded())
+        .map(|(name, entries)| {
+            ErdModuleBuilder::default()
+                .name(name)
+                .entries(entries)
+                .build()
+                .unwrap()
+        })
+}
+
+fn module_entries() -> impl Parser<char, Vec<ModuleEntry>, Error = Simple<char>> {
+    module_entry()
         .chain(
             spaces()
                 .ignore_then(separator())
                 .ignore_then(text::whitespace())
-                .ignore_then(stmt())
+                .ignore_then(module_entry())
                 .repeated(),
         )
         .or_not()
         .padded()
-        .map(|stmts| stmts.unwrap_or_else(|| vec![]))
+        .map(|entries| entries.unwrap_or_else(|| vec![]))
+}
+
+fn module_entry() -> impl Parser<char, ModuleEntry, Error = Simple<char>> {
+    choice((
+        definition().map(|d| ModuleEntry::Definition(d)),
+        stmt().map(|stmt| ModuleEntry::Stmt(stmt)),
+    ))
+}
+
+fn definition() -> impl Parser<char, Definition, Error = Simple<char>> {
+    entity_definition().map(|ed| Definition::EntityDefinition(ed))
 }
 
 fn stmt() -> impl Parser<char, Stmt, Error = Simple<char>> {
-    entity_definition().or(relation_stmt())
-}
-
-fn relation_stmt() -> impl Parser<char, Stmt, Error = Simple<char>> {
     relation().map(|expr| Stmt::Expr(expr))
 }
 
@@ -151,18 +202,17 @@ fn relation() -> impl Parser<char, Expr, Error = Simple<char>> {
         .foldl(|a, b| Expr::Relation(Box::new(a), Box::new(b)))
 }
 
-fn entity_definition() -> impl Parser<char, Stmt, Error = Simple<char>> {
+fn entity_definition() -> impl Parser<char, EntityDefinition, Error = Simple<char>> {
     text::ident()
         .then_ignore(just("{").padded())
         .then(entity_fields())
         .then_ignore(just("}"))
         .map(|(name, fields)| {
-            let definition = EntityDefinitionBuilder::default()
+            EntityDefinitionBuilder::default()
                 .name(name)
                 .fields(fields)
                 .build()
-                .unwrap();
-            Stmt::EntityDefinition(definition)
+                .unwrap()
         })
 }
 
@@ -199,7 +249,7 @@ fn entity_field_type() -> impl Parser<char, ColumnType, Error = Simple<char>> {
     // TODO: iterate enum variants
     choice((
         text::keyword("int").to(ColumnType::Int),
-        text::keyword("uuid").to(ColumnType::UUID),
+        text::keyword("uuid").to(ColumnType::Uuid),
         text::keyword("text").to(ColumnType::Text),
         text::keyword("timestamp").to(ColumnType::Timestamp),
     ))

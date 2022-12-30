@@ -20,8 +20,7 @@ fn main() -> Result<(), io::Error> {
     let r = parser().parse(src);
     println!("{:?}", r);
     if let Ok(r) = r {
-        let s: Vec<_> = r.iter().map(|x| x.to_string()).collect();
-        println!("{}", s.join("\n"));
+        println!("{}", r);
     }
 
     Ok(())
@@ -48,7 +47,7 @@ mod tests {
             ColumnType::Int,
             Some(ColumnKey::PrimaryKey),
         ));
-        users_table.add_column(Column::new("uuid".into(), ColumnType::UUID, None));
+        users_table.add_column(Column::new("uuid".into(), ColumnType::Uuid, None));
         users_table.add_column(Column::new("email".into(), ColumnType::Text, None));
         users_table.add_column(Column::new("about_html".into(), ColumnType::Text, None));
         users_table.add_column(Column::new(
@@ -63,7 +62,7 @@ mod tests {
             ColumnType::Int,
             Some(ColumnKey::PrimaryKey),
         ));
-        posts_table.add_column(Column::new("uuid".into(), ColumnType::UUID, None));
+        posts_table.add_column(Column::new("uuid".into(), ColumnType::Uuid, None));
         posts_table.add_column(Column::new("title".into(), ColumnType::Text, None));
         posts_table.add_column(Column::new("content".into(), ColumnType::Text, None));
         posts_table.add_column(Column::new(
