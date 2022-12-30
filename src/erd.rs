@@ -197,12 +197,6 @@ pub enum ColumnType {
     Timestamp,
 }
 
-impl ColumnType {
-    pub fn to_keyword(&self) -> String {
-        self.to_string()
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
 pub enum ColumnKey {
     #[display(fmt = "Primary Key")]

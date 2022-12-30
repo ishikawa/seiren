@@ -246,7 +246,10 @@ fn entity_field() -> impl Parser<char, EntityField, Error = Simple<char>> {
 }
 
 fn entity_field_type() -> impl Parser<char, ColumnType, Error = Simple<char>> {
-    // TODO: iterate enum variants
+    // We want the compiler to check for exclusivity. However, due to the limitations of Rust and the nature of combinator typing, this could not be achieved without introducing code complexity and third-party libraries.
+    //
+    // - To iterate through the variants of enum, I can use the `strum` crate.
+    // - However, since the types do not match, we cannot construct a combinator with looping through variats.
     choice((
         text::keyword("int").to(ColumnType::Int),
         text::keyword("uuid").to(ColumnType::Uuid),
@@ -256,7 +259,6 @@ fn entity_field_type() -> impl Parser<char, ColumnType, Error = Simple<char>> {
 }
 
 fn entity_field_key() -> impl Parser<char, ColumnKey, Error = Simple<char>> {
-    // TODO: iterate enum variants
     choice((
         text::keyword("PK").to(ColumnKey::PrimaryKey),
         text::keyword("FK").to(ColumnKey::ForeginKey),
