@@ -9,23 +9,21 @@ program = erd_module ;
 erd_module = PAD, "erd", PAD, [ identifier, PAD ], "{", PAD, module_entries, PAD, "}", PAD ;
 module_entries = module_entry, { SEP, PAD, module_entry }
                | EMPTY ;
-module_entry = definition | stmt ;
-definition = entity_definition ;
-stmt = relation ;
+module_entry = entity_definition | relation ;
 entity_definition = identifier, PAD, "{", entity_fields, "}" ;
 entity_fields = PAD, entity_field, { SEP, PAD, entity_field }, PAD
               | EMPTY ;
 entity_field = identifier, entity_field_type, [ entity_field_type ] ;
 entity_field_type = "int" | "uuid" | "text" | "timestamp" ;
 entity_field_key = "PK" | "FK" ;
-relation = entity, { PAD, edge, PAD, entity } ;
+relation = entity, PAD, edge, PAD, entity ;
 entity = identifier, [ ".", identifier ] ;
 edge = "o", "--", "o" ;
 identifier = identifier_start, { identifier_continue }
            | quoted_identifier ;
 identifier_start = "_" | letter ;
 identifier_continue = "_" | letter | digit ;
-quoted_identifier = "`", { ? any character ? }, "`" ;
+quoted_identifier = "`", { ? any character or escaped character ? }, "`" ;
 letter = ? a-zA-Z ? ;
 digit = ? 0-9 ? ;
 whitespace = ? whitespace ? ;
@@ -35,12 +33,11 @@ SEP = newline | ";" ;
 EMPTY = ? (empty) ? ;
 ```
 */
-use crate::erd::{ColumnKey, ColumnType};
+use crate::erd::{EntityDefinition, EntityField, EntityRelation};
+use crate::erd::{EntityFieldKey, EntityFieldType, EntityPath, Module, ModuleEntry};
 use chumsky::prelude::*;
 use chumsky::Stream;
-use derive_builder::Builder;
 use derive_more::Display;
-use std::fmt;
 
 pub type Span = std::ops::Range<usize>;
 
@@ -74,106 +71,7 @@ pub enum Token {
     Newline,
 }
 
-#[derive(Debug, Builder)]
-pub struct ErdModule {
-    pub name: Option<String>,
-    #[builder(setter(each(name = "entry")))]
-    pub entries: Vec<ModuleEntry>,
-}
-
-impl fmt::Display for ErdModule {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "erd ")?;
-        if let Some(name) = &self.name {
-            write!(f, "{} ", name)?;
-        }
-        writeln!(f, "{{")?;
-        for entry in self.entries.iter() {
-            writeln!(f, "  {}", entry)?;
-        }
-        write!(f, "}}")
-    }
-}
-
-#[derive(Debug, Clone, Display)]
-pub enum ModuleEntry {
-    Definition(Definition),
-    Stmt(Stmt),
-}
-
-#[derive(Debug, Clone, Display)]
-pub enum Definition {
-    EntityDefinition(EntityDefinition),
-}
-
-#[derive(Debug, Clone, Display)]
-pub enum Stmt {
-    Expr(Expr),
-}
-
-#[derive(Debug, Clone, Default, Builder)]
-#[builder(default)]
-pub struct EntityDefinition {
-    #[builder(setter(into))]
-    pub name: String,
-    #[builder(setter(each(name = "field")))]
-    pub fields: Vec<EntityField>,
-}
-
-impl fmt::Display for EntityDefinition {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} {{", self.name)?;
-        if self.fields.len() > 0 {
-            write!(f, " ")?;
-
-            let mut it = self.fields.iter().peekable();
-
-            while let Some(field) = it.next() {
-                write!(f, "{}", field)?;
-                if it.peek().is_some() {
-                    write!(f, "; ")?;
-                }
-            }
-
-            write!(f, " ")?;
-        }
-        write!(f, "}}")
-    }
-}
-
-#[derive(Debug, Clone, Builder)]
-pub struct EntityField {
-    #[builder(setter(into))]
-    pub name: String,
-    pub field_type: ColumnType,
-    pub field_key: Option<ColumnKey>,
-}
-
-impl fmt::Display for EntityField {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} {}", self.name, self.field_type)?;
-        let Some(field_key) = self.field_key else { return Ok(()) };
-        write!(f, " {}", field_key.to_keyword())
-    }
-}
-
-#[derive(Debug, Clone, Display)]
-pub enum Expr {
-    #[display(fmt = "({} o--o {})", _0, _1)]
-    Relation(Box<Expr>, Box<Expr>),
-    #[display(fmt = "{}", _0)]
-    Entity(EntityPath),
-}
-
-#[derive(Debug, Clone, Display)]
-pub enum EntityPath {
-    #[display(fmt = "{}", _0)]
-    Table(String),
-    #[display(fmt = "{}.{}", _0, _1)]
-    Column(String, String),
-}
-
-pub fn parse(src: &str) -> (Option<ErdModule>, Vec<Simple<char>>, Vec<Simple<Token>>) {
+pub fn parse(src: &str) -> (Option<Module>, Vec<Simple<char>>, Vec<Simple<Token>>) {
     let (tokens, errs) = tokenizer().parse_recovery(src);
 
     if let Some(tokens) = tokens {
@@ -267,7 +165,7 @@ fn tokenizer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
         .repeated()
 }
 
-fn erd_module_parser() -> impl Parser<Token, ErdModule, Error = Simple<Token>> + Clone {
+fn erd_module_parser() -> impl Parser<Token, Module, Error = Simple<Token>> + Clone {
     let ident = filter_map(|span, tok| match tok {
         Token::Ident(ident) => Ok(ident.clone()),
         _ => Err(Simple::expected_input_found(span, Vec::new(), Some(tok))),
@@ -282,38 +180,31 @@ fn erd_module_parser() -> impl Parser<Token, ErdModule, Error = Simple<Token>> +
     // - To iterate through the variants of enum, I can use the `strum` crate.
     // - However, since the types do not match, we cannot construct a combinator with looping through variats.
     let entity_field_type = choice((
-        just(Token::Int).to(ColumnType::Int),
-        just(Token::Uuid).to(ColumnType::Uuid),
-        just(Token::Text).to(ColumnType::Text),
-        just(Token::Timestamp).to(ColumnType::Timestamp),
+        just(Token::Int).to(EntityFieldType::Int),
+        just(Token::Uuid).to(EntityFieldType::Uuid),
+        just(Token::Text).to(EntityFieldType::Text),
+        just(Token::Timestamp).to(EntityFieldType::Timestamp),
     ));
 
     let entity_field_key = choice((
-        just(Token::PK).to(ColumnKey::PrimaryKey),
-        just(Token::FK).to(ColumnKey::ForeginKey),
+        just(Token::PK).to(EntityFieldKey::PrimaryKey),
+        just(Token::FK).to(EntityFieldKey::ForeginKey),
     ));
 
     let entity = ident
         .then(just(Token::Ctrl('.')).ignore_then(ident.or_not()))
         .map(|(table, field)| {
             if let Some(field) = field {
-                Expr::Entity(EntityPath::Column(table, field))
+                EntityPath::Field(table, field)
             } else {
-                Expr::Entity(EntityPath::Table(table))
+                EntityPath::Entity(table)
             }
         });
 
     let entity_field = ident
         .then(entity_field_type)
         .then(entity_field_key.or_not())
-        .map(|((name, field_type), field_key)| {
-            EntityFieldBuilder::default()
-                .name(name.clone())
-                .field_type(field_type)
-                .field_key(field_key)
-                .build()
-                .unwrap()
-        });
+        .map(|((name, field_type), field_key)| EntityField::new(name, field_type, field_key));
 
     let entity_fields = entity_field
         .clone()
@@ -334,11 +225,13 @@ fn erd_module_parser() -> impl Parser<Token, ErdModule, Error = Simple<Token>> +
         .then(entity_fields)
         .then_ignore(just(Token::Ctrl('}')))
         .map(|(name, fields)| {
-            EntityDefinitionBuilder::default()
-                .name(name)
-                .fields(fields)
-                .build()
-                .unwrap()
+            let mut definition = EntityDefinition::new(name);
+
+            for f in fields {
+                definition.add_field(f);
+            }
+
+            definition
         });
 
     let relation = entity
@@ -346,18 +239,13 @@ fn erd_module_parser() -> impl Parser<Token, ErdModule, Error = Simple<Token>> +
         .then(
             just(Token::Edge)
                 .padded_by(pad.clone())
-                .ignore_then(entity.clone())
-                .repeated(),
+                .ignore_then(entity.clone()),
         )
-        .foldl(|a, b| Expr::Relation(Box::new(a), Box::new(b)));
-
-    let stmt = relation.map(|expr| Stmt::Expr(expr));
-
-    let definition = entity_definition.map(|ed| Definition::EntityDefinition(ed));
+        .map(|(a, b)| EntityRelation::new(a, b));
 
     let module_entry = choice((
-        definition.map(|d| ModuleEntry::Definition(d)),
-        stmt.map(|stmt| ModuleEntry::Stmt(stmt)),
+        entity_definition.map(|d| ModuleEntry::EntityDefinition(d)),
+        relation.map(|r| ModuleEntry::EntityRelation(r)),
     ));
 
     let module_entries = module_entry
@@ -380,10 +268,12 @@ fn erd_module_parser() -> impl Parser<Token, ErdModule, Error = Simple<Token>> +
         .then_ignore(just(Token::Ctrl('}')))
         .padded_by(pad.clone())
         .map(|(name, entries)| {
-            ErdModuleBuilder::default()
-                .name(name)
-                .entries(entries)
-                .build()
-                .unwrap()
+            let mut module = Module::new(name);
+
+            for entry in entries {
+                module.add_entry(entry);
+            }
+
+            module
         })
 }

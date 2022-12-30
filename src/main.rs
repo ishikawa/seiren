@@ -29,57 +29,76 @@ fn main() -> Result<(), io::Error> {
 mod tests {
     use difference::assert_diff;
     use seiren::{
-        erd::{Column, ColumnKey, ColumnType, ERDiagram, Relation, RelationPath, Table},
+        erd::{
+            EntityDefinition, EntityField, EntityFieldKey, EntityFieldType, EntityPath,
+            EntityRelation, Module,
+        },
         layout::{LayoutEngine, SimpleLayoutEngine},
         mir::Document,
         renderer::{Renderer, SVGRenderer},
     };
 
     fn demo_erd() -> Document {
-        let mut diagram = ERDiagram::new();
-        let mut users_table = Table::new("users".into());
-        let mut posts_table = Table::new("posts".into());
+        let mut diagram = Module::new(None);
+        let mut users_table = EntityDefinition::new("users".into());
+        let mut posts_table = EntityDefinition::new("posts".into());
 
         // users
-        users_table.add_column(Column::new(
+        users_table.add_field(EntityField::new(
             "id".into(),
-            ColumnType::Int,
-            Some(ColumnKey::PrimaryKey),
+            EntityFieldType::Int,
+            Some(EntityFieldKey::PrimaryKey),
         ));
-        users_table.add_column(Column::new("uuid".into(), ColumnType::Uuid, None));
-        users_table.add_column(Column::new("email".into(), ColumnType::Text, None));
-        users_table.add_column(Column::new("about_html".into(), ColumnType::Text, None));
-        users_table.add_column(Column::new(
+        users_table.add_field(EntityField::new("uuid".into(), EntityFieldType::Uuid, None));
+        users_table.add_field(EntityField::new(
+            "email".into(),
+            EntityFieldType::Text,
+            None,
+        ));
+        users_table.add_field(EntityField::new(
+            "about_html".into(),
+            EntityFieldType::Text,
+            None,
+        ));
+        users_table.add_field(EntityField::new(
             "created_at".into(),
-            ColumnType::Timestamp,
+            EntityFieldType::Timestamp,
             None,
         ));
 
         // posts
-        posts_table.add_column(Column::new(
+        posts_table.add_field(EntityField::new(
             "id".into(),
-            ColumnType::Int,
-            Some(ColumnKey::PrimaryKey),
+            EntityFieldType::Int,
+            Some(EntityFieldKey::PrimaryKey),
         ));
-        posts_table.add_column(Column::new("uuid".into(), ColumnType::Uuid, None));
-        posts_table.add_column(Column::new("title".into(), ColumnType::Text, None));
-        posts_table.add_column(Column::new("content".into(), ColumnType::Text, None));
-        posts_table.add_column(Column::new(
-            "created_at".into(),
-            ColumnType::Timestamp,
+        posts_table.add_field(EntityField::new("uuid".into(), EntityFieldType::Uuid, None));
+        posts_table.add_field(EntityField::new(
+            "title".into(),
+            EntityFieldType::Text,
             None,
         ));
-        posts_table.add_column(Column::new(
+        posts_table.add_field(EntityField::new(
+            "content".into(),
+            EntityFieldType::Text,
+            None,
+        ));
+        posts_table.add_field(EntityField::new(
+            "created_at".into(),
+            EntityFieldType::Timestamp,
+            None,
+        ));
+        posts_table.add_field(EntityField::new(
             "created_by".into(),
-            ColumnType::Int,
-            Some(ColumnKey::ForeginKey),
+            EntityFieldType::Int,
+            Some(EntityFieldKey::ForeginKey),
         ));
 
-        diagram.add_table(users_table);
-        diagram.add_table(posts_table);
-        diagram.add_relation(Relation::new(
-            RelationPath::Column("posts".into(), "created_by".into()),
-            RelationPath::Column("users".into(), "id".into()),
+        diagram.add_entity_definition(users_table);
+        diagram.add_entity_definition(posts_table);
+        diagram.add_entity_relation(EntityRelation::new(
+            EntityPath::Field("posts".into(), "created_by".into()),
+            EntityPath::Field("users".into(), "id".into()),
         ));
 
         let mut doc = diagram.into_mir();

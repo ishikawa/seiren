@@ -3,35 +3,40 @@ use crate::color::{NamedColor, RGBColor, WebColor};
 use crate::mir;
 use derive_more::Display;
 use std::collections::HashMap;
+use std::fmt;
 
 #[derive(Debug, Clone)]
-pub struct ERDiagram {
-    tables: Vec<Table>,
-    relations: Vec<Relation>,
+pub struct Module {
+    name: Option<String>,
+    entries: Vec<ModuleEntry>,
 }
 
-impl ERDiagram {
-    pub fn new() -> Self {
+impl Module {
+    pub fn new(name: Option<String>) -> Self {
         Self {
-            tables: vec![],
-            relations: vec![],
+            name,
+            entries: vec![],
         }
     }
 
-    pub fn tables(&self) -> impl ExactSizeIterator<Item = &Table> {
-        self.tables.iter()
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
     }
 
-    pub fn relations(&self) -> impl ExactSizeIterator<Item = &Relation> {
-        self.relations.iter()
+    pub fn entries(&self) -> impl ExactSizeIterator<Item = &ModuleEntry> {
+        self.entries.iter()
     }
 
-    pub fn add_table(&mut self, table: Table) {
-        self.tables.push(table);
+    pub fn add_entry(&mut self, entry: ModuleEntry) {
+        self.entries.push(entry);
     }
 
-    pub fn add_relation(&mut self, relation: Relation) {
-        self.relations.push(relation);
+    pub fn add_entity_definition(&mut self, definition: EntityDefinition) {
+        self.entries.push(ModuleEntry::EntityDefinition(definition));
+    }
+
+    pub fn add_entity_relation(&mut self, relation: EntityRelation) {
+        self.entries.push(ModuleEntry::EntityRelation(relation));
     }
 
     pub fn into_mir(&self) -> mir::Document {
@@ -42,97 +47,98 @@ impl ERDiagram {
         let mut doc = mir::Document::new();
 
         // node path (e.g. ["users", "id"]) -> node ID
-        let mut node_paths: HashMap<RelationPath, mir::NodeId> = HashMap::new();
+        let mut node_paths: HashMap<EntityPath, mir::NodeId> = HashMap::new();
 
-        for table in self.tables.iter() {
-            let header_node_id = {
-                let name = mir::TextSpanBuilder::default()
-                    .text(table.name())
-                    .color(Some(text_color.clone()))
-                    .font_family(Some(mir::FontFamily::Monospace1))
-                    .font_weight(Some(mir::FontWeight::Bold))
-                    .build()
-                    .unwrap();
-                let field = mir::FieldNodeBuilder::default()
-                    .title(name)
-                    .bg_color(Some(light_gray_color.clone()))
-                    .build()
-                    .unwrap();
+        for entry in self.entries.iter() {
+            match entry {
+                ModuleEntry::EntityDefinition(definition) => {
+                    // table
+                    let header_node_id = {
+                        let name = mir::TextSpanBuilder::default()
+                            .text(definition.name.clone())
+                            .color(Some(text_color.clone()))
+                            .font_family(Some(mir::FontFamily::Monospace1))
+                            .font_weight(Some(mir::FontWeight::Bold))
+                            .build()
+                            .unwrap();
+                        let field = mir::FieldNodeBuilder::default()
+                            .title(name)
+                            .bg_color(Some(light_gray_color.clone()))
+                            .build()
+                            .unwrap();
 
-                doc.create_field(field)
-            };
-
-            let record = mir::RecordNodeBuilder::default()
-                .rounded(true)
-                .bg_color(Some(table_bg_color.clone()))
-                .border_color(Some(table_border_color.clone()))
-                .build()
-                .unwrap();
-
-            let field_ids: Vec<_> = table
-                .columns
-                .iter()
-                .map(|column| {
-                    let name = mir::TextSpanBuilder::default()
-                        .text(column.name())
-                        .color(Some(text_color.clone()))
-                        .font_family(Some(mir::FontFamily::Monospace2))
-                        .font_weight(Some(mir::FontWeight::Lighter))
-                        .build()
-                        .unwrap();
-
-                    let column_type = mir::TextSpanBuilder::default()
-                        .text(column.column_type().to_string())
-                        .color(Some(ERDiagram::column_type_color(&column.r#type)))
-                        .font_family(Some(mir::FontFamily::Monospace2))
-                        .font_weight(Some(mir::FontWeight::Lighter))
-                        .font_size(Some(mir::FontSize::Small))
-                        .build()
-                        .unwrap();
-
-                    let field = mir::FieldNodeBuilder::default()
-                        .title(name)
-                        .subtitle(Some(column_type))
+                        doc.create_field(field)
+                    };
+                    let record = mir::RecordNodeBuilder::default()
+                        .rounded(true)
+                        .bg_color(Some(table_bg_color.clone()))
                         .border_color(Some(table_border_color.clone()))
-                        .badge(column.column_key().map(|key| key.into_mir()))
                         .build()
                         .unwrap();
+                    let field_ids: Vec<_> = definition
+                        .fields
+                        .iter()
+                        .map(|field| {
+                            let name = mir::TextSpanBuilder::default()
+                                .text(field.name.clone())
+                                .color(Some(text_color.clone()))
+                                .font_family(Some(mir::FontFamily::Monospace2))
+                                .font_weight(Some(mir::FontWeight::Lighter))
+                                .build()
+                                .unwrap();
 
-                    let node_id = doc.create_field(field);
+                            let column_type = mir::TextSpanBuilder::default()
+                                .text(field.field_type.to_string())
+                                .color(Some(Module::column_type_color(&field.field_type)))
+                                .font_family(Some(mir::FontFamily::Monospace2))
+                                .font_weight(Some(mir::FontWeight::Lighter))
+                                .font_size(Some(mir::FontSize::Small))
+                                .build()
+                                .unwrap();
 
-                    node_paths.insert(
-                        RelationPath::Column(table.name().into(), column.name().into()),
-                        node_id,
-                    );
-                    node_id
-                })
-                .collect();
+                            let field_node = mir::FieldNodeBuilder::default()
+                                .title(name)
+                                .subtitle(Some(column_type))
+                                .border_color(Some(table_border_color.clone()))
+                                .badge(field.field_key.map(|key| key.into_mir()))
+                                .build()
+                                .unwrap();
 
-            let record_id = doc.create_record(record);
-            node_paths.insert(RelationPath::Table(table.name().into()), record_id);
+                            let node_id = doc.create_field(field_node);
 
-            let record_node = doc.get_node_mut(&record_id).unwrap();
+                            node_paths.insert(
+                                EntityPath::Field(definition.name.clone(), field.name.clone()),
+                                node_id,
+                            );
+                            node_id
+                        })
+                        .collect();
 
-            record_node.append_child(header_node_id);
-            for field_id in field_ids {
-                record_node.append_child(field_id);
+                    let record_id = doc.create_record(record);
+                    node_paths.insert(EntityPath::Entity(definition.name.clone()), record_id);
+
+                    let record_node = doc.get_node_mut(&record_id).unwrap();
+
+                    record_node.append_child(header_node_id);
+                    for field_id in field_ids {
+                        record_node.append_child(field_id);
+                    }
+
+                    doc.body_mut().append_child(record_id);
+                }
+                ModuleEntry::EntityRelation(relation) => {
+                    let Some(start_node_id) = node_paths.get(relation.start_path()) else { continue };
+                    let Some(end_node_id) = node_paths.get(relation.end_path()) else { continue };
+
+                    doc.append_edge(mir::Edge::new(*start_node_id, *end_node_id));
+                }
             }
-
-            doc.body_mut().append_child(record_id);
-        }
-
-        // Translates relations to edges.
-        for relation in self.relations.iter() {
-            let Some(start_node_id) = node_paths.get(relation.start_path()) else { continue };
-            let Some(end_node_id) = node_paths.get(relation.end_path()) else { continue };
-
-            doc.append_edge(mir::Edge::new(*start_node_id, *end_node_id));
         }
 
         doc
     }
 
-    fn column_type_color(column_type: &ColumnType) -> WebColor {
+    fn column_type_color(column_type: &EntityFieldType) -> WebColor {
         let yellow = WebColor::RGB(RGBColor {
             red: 236,
             green: 199,
@@ -150,25 +156,45 @@ impl ERDiagram {
         });
 
         match column_type {
-            ColumnType::Int => yellow.clone(),
-            ColumnType::Uuid => yellow.clone(),
-            ColumnType::Text => orange.clone(),
-            ColumnType::Timestamp => green.clone(),
+            EntityFieldType::Int => yellow.clone(),
+            EntityFieldType::Uuid => yellow.clone(),
+            EntityFieldType::Text => orange.clone(),
+            EntityFieldType::Timestamp => green.clone(),
         }
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Table {
-    name: String,
-    columns: Vec<Column>,
+impl fmt::Display for Module {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "erd ")?;
+        if let Some(name) = &self.name {
+            write!(f, "{} ", name)?;
+        }
+        writeln!(f, "{{")?;
+        for entry in self.entries.iter() {
+            writeln!(f, "  {}", entry)?;
+        }
+        write!(f, "}}")
+    }
 }
 
-impl Table {
+#[derive(Debug, Clone, Display)]
+pub enum ModuleEntry {
+    EntityDefinition(EntityDefinition),
+    EntityRelation(EntityRelation),
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct EntityDefinition {
+    name: String,
+    fields: Vec<EntityField>,
+}
+
+impl EntityDefinition {
     pub fn new(name: String) -> Self {
         Self {
             name,
-            columns: vec![],
+            fields: vec![],
         }
     }
 
@@ -176,17 +202,79 @@ impl Table {
         &self.name
     }
 
-    pub fn columns(&self) -> impl ExactSizeIterator<Item = &Column> {
-        self.columns.iter()
+    pub fn fields(&self) -> impl ExactSizeIterator<Item = &EntityField> {
+        self.fields.iter()
     }
 
-    pub fn add_column(&mut self, column: Column) {
-        self.columns.push(column);
+    pub fn add_field(&mut self, column: EntityField) {
+        self.fields.push(column);
+    }
+}
+
+impl fmt::Display for EntityDefinition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {{", self.name)?;
+        if self.fields.len() > 0 {
+            write!(f, " ")?;
+
+            let mut it = self.fields.iter().peekable();
+
+            while let Some(field) = it.next() {
+                write!(f, "{}", field)?;
+                if it.peek().is_some() {
+                    write!(f, "; ")?;
+                }
+            }
+
+            write!(f, " ")?;
+        }
+        write!(f, "}}")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct EntityField {
+    name: String,
+    field_type: EntityFieldType,
+    field_key: Option<EntityFieldKey>,
+}
+
+impl EntityField {
+    pub fn new(
+        name: String,
+        field_type: EntityFieldType,
+        field_key: Option<EntityFieldKey>,
+    ) -> Self {
+        Self {
+            name,
+            field_type,
+            field_key,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn field_type(&self) -> &EntityFieldType {
+        &self.field_type
+    }
+
+    pub fn field_key(&self) -> Option<&EntityFieldKey> {
+        self.field_key.as_ref()
+    }
+}
+
+impl fmt::Display for EntityField {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}", self.name, self.field_type)?;
+        let Some(field_key) = self.field_key else { return Ok(()) };
+        write!(f, " {}", field_key.to_keyword())
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
-pub enum ColumnType {
+pub enum EntityFieldType {
     #[display(fmt = "int")]
     Int,
     #[display(fmt = "uuid")]
@@ -198,14 +286,14 @@ pub enum ColumnType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
-pub enum ColumnKey {
+pub enum EntityFieldKey {
     #[display(fmt = "Primary Key")]
     PrimaryKey,
     #[display(fmt = "Foregin Key")]
     ForeginKey,
 }
 
-impl ColumnKey {
+impl EntityFieldKey {
     pub fn into_mir(&self) -> mir::Badge {
         mir::BadgeBuilder::default()
             .text(self.badge_text())
@@ -217,8 +305,8 @@ impl ColumnKey {
 
     pub fn to_keyword(&self) -> String {
         match self {
-            ColumnKey::PrimaryKey => "PK".into(),
-            ColumnKey::ForeginKey => "FK".into(),
+            EntityFieldKey::PrimaryKey => "PK".into(),
+            EntityFieldKey::ForeginKey => "FK".into(),
         }
     }
 
@@ -228,69 +316,47 @@ impl ColumnKey {
 
     fn badge_text_color(&self) -> WebColor {
         match self {
-            ColumnKey::PrimaryKey => WebColor::Named(NamedColor::White),
-            ColumnKey::ForeginKey => WebColor::RGB(RGBColor::new(17, 112, 251)),
+            EntityFieldKey::PrimaryKey => WebColor::Named(NamedColor::White),
+            EntityFieldKey::ForeginKey => WebColor::RGB(RGBColor::new(17, 112, 251)),
         }
     }
 
     fn badge_bg_color(&self) -> WebColor {
         match self {
-            ColumnKey::PrimaryKey => WebColor::RGB(RGBColor::new(55, 55, 55)),
-            ColumnKey::ForeginKey => WebColor::RGB(RGBColor::new(32, 41, 55)),
+            EntityFieldKey::PrimaryKey => WebColor::RGB(RGBColor::new(55, 55, 55)),
+            EntityFieldKey::ForeginKey => WebColor::RGB(RGBColor::new(32, 41, 55)),
         }
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Column {
-    name: String,
-    r#type: ColumnType,
-    key: Option<ColumnKey>,
+#[derive(Debug, Clone, Display, PartialEq, Eq, Hash)]
+pub enum EntityPath {
+    #[display(fmt = "{}", _0)]
+    Entity(String),
+    #[display(fmt = "{}.{}", _0, _1)]
+    Field(String, String),
 }
 
-impl Column {
-    pub fn new(name: String, r#type: ColumnType, key: Option<ColumnKey>) -> Self {
-        Self { name, r#type, key }
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn column_type(&self) -> &ColumnType {
-        &self.r#type
-    }
-
-    pub fn column_key(&self) -> Option<&ColumnKey> {
-        self.key.as_ref()
-    }
+#[derive(Debug, Clone, Display)]
+#[display(fmt = "{} o--o {}", start_path, end_path)]
+pub struct EntityRelation {
+    start_path: EntityPath,
+    end_path: EntityPath,
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum RelationPath {
-    Table(String),
-    Column(String, String),
-}
-
-#[derive(Debug, Clone)]
-pub struct Relation {
-    start_path: RelationPath,
-    end_path: RelationPath,
-}
-
-impl Relation {
-    pub fn new(from: RelationPath, to: RelationPath) -> Self {
+impl EntityRelation {
+    pub fn new(start_path: EntityPath, end_path: EntityPath) -> Self {
         Self {
-            start_path: from,
-            end_path: to,
+            start_path,
+            end_path,
         }
     }
 
-    pub fn start_path(&self) -> &RelationPath {
+    pub fn start_path(&self) -> &EntityPath {
         &self.start_path
     }
 
-    pub fn end_path(&self) -> &RelationPath {
+    pub fn end_path(&self) -> &EntityPath {
         &self.end_path
     }
 }
@@ -305,7 +371,7 @@ mod tests {
 
     #[test]
     fn empty_doc() {
-        let diagram = ERDiagram::new();
+        let diagram = Module::new(None);
         let mut doc = diagram.into_mir();
 
         let engine = SimpleLayoutEngine::new();
