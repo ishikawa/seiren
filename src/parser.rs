@@ -10,13 +10,12 @@ erd_diagram = "erd", PAD, [ identifier, PAD ], "{", stmts, "}" ;
 stmts = PAD, stmt, { SP, SEP, PAD, stmt }, PAD
       | EMPTY ;
 stmt = ( entity_definition | relation ) ;
-entity_definition = identifier, PAD, "{", fields, "}" ;
-fields = [ field ], { SEP, field } ;
-fields = PAD, field, { SP, SEP, field }, PAD
-       | EMPTY ;
-field = identifier, SP, field_type, [ SP, field_key ] ;
-field_type = "int" | "uuid" | "text" | "timestamp" ;
-field_key = "PK" | "FK" ;
+entity_definition = identifier, PAD, "{", entity_fields, "}" ;
+entity_fields = PAD, entity_field, { SP, SEP, PAD, entity_field }, PAD
+              | EMPTY ;
+entity_field = identifier, SP, entity_field_type, [ SP, entity_field_type ] ;
+entity_field_type = "int" | "uuid" | "text" | "timestamp" ;
+entity_field_key = "PK" | "FK" ;
 relation = entity, { PAD, edge, PAD, entity } ;
 entity = identifier, [ ".", identifier ] ;
 edge = "o", "--", "o" ;
@@ -29,7 +28,7 @@ whitespace = ? whitespace ? ;
 newline = ? newline ? ;
 PAD = { whitespace | newline } ;
 SP = { whitespace } ;
-SEP = newline ;
+SEP = newline | ";" ;
 EMPTY = ? (empty) ? ;
 ```
 */
@@ -68,7 +67,7 @@ impl fmt::Display for EntityDefinition {
             while let Some(field) = it.next() {
                 write!(f, "{}", field)?;
                 if it.peek().is_some() {
-                    write!(f, ", ")?;
+                    write!(f, "; ")?;
                 }
             }
 
@@ -90,7 +89,7 @@ impl fmt::Display for EntityField {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} {}", self.name, self.field_type)?;
         let Some(field_key) = self.field_key else { return Ok(()) };
-        write!(f, " {}", field_key)
+        write!(f, " {}", field_key.to_keyword())
     }
 }
 
@@ -120,11 +119,15 @@ fn spaces() -> impl Parser<char, String, Error = Simple<char>> {
         .collect::<String>()
 }
 
+fn separator() -> impl Parser<char, String, Error = Simple<char>> {
+    choice((just("\n"), just("\r\n"), just(";"))).map(|x| x.to_string())
+}
+
 fn stmts() -> impl Parser<char, Vec<Stmt>, Error = Simple<char>> {
     stmt()
         .chain(
             spaces()
-                .ignore_then(text::newline())
+                .ignore_then(separator())
                 .ignore_then(text::whitespace())
                 .ignore_then(stmt())
                 .repeated(),
@@ -150,15 +153,64 @@ fn relation() -> impl Parser<char, Expr, Error = Simple<char>> {
 
 fn entity_definition() -> impl Parser<char, Stmt, Error = Simple<char>> {
     text::ident()
-        .then(just("{").padded())
-        .then(just("}"))
-        .map(|((name, _), _)| {
+        .then_ignore(just("{").padded())
+        .then(entity_fields())
+        .then_ignore(just("}"))
+        .map(|(name, fields)| {
             let definition = EntityDefinitionBuilder::default()
                 .name(name)
+                .fields(fields)
                 .build()
                 .unwrap();
             Stmt::EntityDefinition(definition)
         })
+}
+
+fn entity_fields() -> impl Parser<char, Vec<EntityField>, Error = Simple<char>> {
+    entity_field()
+        .chain(
+            spaces()
+                .ignore_then(separator())
+                .ignore_then(text::whitespace())
+                .ignore_then(entity_field())
+                .repeated(),
+        )
+        .or_not()
+        .padded()
+        .map(|fields| fields.unwrap_or_else(|| vec![]))
+}
+
+fn entity_field() -> impl Parser<char, EntityField, Error = Simple<char>> {
+    text::ident()
+        .then_ignore(spaces())
+        .then(entity_field_type())
+        .then(spaces().ignore_then(entity_field_key()).or_not())
+        .map(|((name, field_type), field_key)| {
+            EntityFieldBuilder::default()
+                .name(name)
+                .field_type(field_type)
+                .field_key(field_key)
+                .build()
+                .unwrap()
+        })
+}
+
+fn entity_field_type() -> impl Parser<char, ColumnType, Error = Simple<char>> {
+    // TODO: iterate enum variants
+    choice((
+        text::keyword("int").to(ColumnType::Int),
+        text::keyword("uuid").to(ColumnType::UUID),
+        text::keyword("text").to(ColumnType::Text),
+        text::keyword("timestamp").to(ColumnType::Timestamp),
+    ))
+}
+
+fn entity_field_key() -> impl Parser<char, ColumnKey, Error = Simple<char>> {
+    // TODO: iterate enum variants
+    choice((
+        text::keyword("PK").to(ColumnKey::PrimaryKey),
+        text::keyword("FK").to(ColumnKey::ForeginKey),
+    ))
 }
 
 fn entity() -> impl Parser<char, Expr, Error = Simple<char>> {

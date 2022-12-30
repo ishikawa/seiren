@@ -197,6 +197,12 @@ pub enum ColumnType {
     Timestamp,
 }
 
+impl ColumnType {
+    pub fn to_keyword(&self) -> String {
+        self.to_string()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
 pub enum ColumnKey {
     #[display(fmt = "Primary Key")]
@@ -215,11 +221,15 @@ impl ColumnKey {
             .unwrap()
     }
 
-    fn badge_text(&self) -> String {
+    pub fn to_keyword(&self) -> String {
         match self {
             ColumnKey::PrimaryKey => "PK".into(),
             ColumnKey::ForeginKey => "FK".into(),
         }
+    }
+
+    fn badge_text(&self) -> String {
+        self.to_keyword()
     }
 
     fn badge_text_color(&self) -> WebColor {
