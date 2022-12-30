@@ -7,10 +7,10 @@ TODO: Follow UAX31 Default Identifier <https://www.unicode.org/reports/tr31/tr31
 ```ebnf
 program = PAD, { erd_diagram }, PAD ;
 erd_diagram = "erd", PAD, [ identifier, PAD ], "{", stmts, "}" ;
-stmts = PAD, stmt, { SP, SEP, stmt }, PAD
+stmts = PAD, stmt, { SP, SEP, PAD, stmt }, PAD
       | EMPTY ;
 stmt = ( entity_definition | relation ) ;
-entity_definition = identifier, SP, "{", fields, "}" ;
+entity_definition = identifier, PAD, "{", fields, "}" ;
 fields = [ field ], { SEP, field } ;
 fields = PAD, field, { SP, SEP, field }, PAD
        | EMPTY ;
@@ -30,13 +30,17 @@ newline = ? newline ? ;
 PAD = { whitespace | newline } ;
 SP = { whitespace } ;
 SEP = newline ;
-EMPTY = () ;
+EMPTY = ? (empty) ? ;
 ```
 */
+
+use std::fmt;
 
 use chumsky::prelude::*;
 use derive_builder::Builder;
 use derive_more::Display;
+
+use crate::erd::{ColumnKey, ColumnType};
 
 #[derive(Debug, Display)]
 pub enum Stmt {
@@ -44,12 +48,50 @@ pub enum Stmt {
     EntityDefinition(EntityDefinition),
 }
 
-#[derive(Debug, Clone, Default, Builder, Display)]
-#[display(fmt = "{} {{}}", name)]
+#[derive(Debug, Clone, Default, Builder)]
 #[builder(default)]
 pub struct EntityDefinition {
     #[builder(setter(into))]
     pub name: String,
+    #[builder(setter(each(name = "field")))]
+    pub fields: Vec<EntityField>,
+}
+
+impl fmt::Display for EntityDefinition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {{", self.name)?;
+        if self.fields.len() > 0 {
+            write!(f, " ")?;
+
+            let mut it = self.fields.iter().peekable();
+
+            while let Some(field) = it.next() {
+                write!(f, "{}", field)?;
+                if it.peek().is_some() {
+                    write!(f, ", ")?;
+                }
+            }
+
+            write!(f, " ")?;
+        }
+        write!(f, "}}")
+    }
+}
+
+#[derive(Debug, Clone, Builder)]
+pub struct EntityField {
+    #[builder(setter(into))]
+    pub name: String,
+    pub field_type: ColumnType,
+    pub field_key: Option<ColumnKey>,
+}
+
+impl fmt::Display for EntityField {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} {}", self.name, self.field_type)?;
+        let Some(field_key) = self.field_key else { return Ok(()) };
+        write!(f, " {}", field_key)
+    }
 }
 
 #[derive(Debug, Display)]
@@ -83,6 +125,7 @@ fn stmts() -> impl Parser<char, Vec<Stmt>, Error = Simple<char>> {
         .chain(
             spaces()
                 .ignore_then(text::newline())
+                .ignore_then(text::whitespace())
                 .ignore_then(stmt())
                 .repeated(),
         )
