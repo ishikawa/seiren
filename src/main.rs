@@ -1,17 +1,19 @@
-use ariadne::{Color, Fmt, Label, Report, ReportBuilder, ReportKind, Source};
+use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use seiren::layout::{LayoutEngine, SimpleLayoutEngine};
 use seiren::parser::parse;
 use seiren::renderer::{Renderer, SVGRenderer};
 use std::io;
-use std::ops::Range;
 use std::{fs, io::Read};
 
 fn main() -> Result<(), io::Error> {
+    let mut filename = "(stdin)".to_string();
     let mut args = std::env::args();
 
     // Read the contents of a specified file or from stdio.
     let src = if args.len() >= 2 {
         let path = args.nth(1).unwrap();
+
+        filename = path.clone();
         fs::read_to_string(path)?
     } else {
         let mut s = String::new();
@@ -30,8 +32,8 @@ fn main() -> Result<(), io::Error> {
 
     // Report errors
     for e in errors {
-        let report: ReportBuilder<Range<usize>> =
-            Report::build(ReportKind::Error, (), e.span().start);
+        let filename = filename.as_str();
+        let report = Report::build(ReportKind::Error, filename, e.span().start);
 
         let report = match e.reason() {
             chumsky::error::SimpleReason::Unclosed { span, delimiter } => report
@@ -40,7 +42,7 @@ fn main() -> Result<(), io::Error> {
                     delimiter.fg(Color::Yellow)
                 ))
                 .with_label(
-                    Label::new(span.clone())
+                    Label::new((filename, span.clone()))
                         .with_message(format!(
                             "Unclosed delimiter {}",
                             delimiter.fg(Color::Yellow)
@@ -48,7 +50,7 @@ fn main() -> Result<(), io::Error> {
                         .with_color(Color::Yellow),
                 )
                 .with_label(
-                    Label::new(e.span())
+                    Label::new((filename, e.span()))
                         .with_message(format!(
                             "Must be closed before this {}",
                             e.found()
@@ -78,7 +80,7 @@ fn main() -> Result<(), io::Error> {
                     }
                 ))
                 .with_label(
-                    Label::new(e.span())
+                    Label::new((filename, e.span()))
                         .with_message(format!(
                             "Unexpected token {}",
                             e.found()
@@ -88,13 +90,16 @@ fn main() -> Result<(), io::Error> {
                         .with_color(Color::Red),
                 ),
             chumsky::error::SimpleReason::Custom(msg) => report.with_message(msg).with_label(
-                Label::new(e.span())
+                Label::new((filename, e.span()))
                     .with_message(format!("{}", msg.fg(Color::Red)))
                     .with_color(Color::Red),
             ),
         };
 
-        report.finish().print(Source::from(&src)).unwrap();
+        report
+            .finish()
+            .eprint((filename, Source::from(&src)))
+            .unwrap();
     }
 
     // AST -> MIR
