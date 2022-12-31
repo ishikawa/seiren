@@ -360,31 +360,3 @@ impl EntityRelation {
         &self.end_path
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
-        layout::{LayoutEngine, SimpleLayoutEngine},
-        renderer::{Renderer, SVGRenderer},
-    };
-
-    #[test]
-    fn empty_doc() {
-        let diagram = Module::new(None);
-        let mut doc = diagram.into_mir();
-
-        let engine = SimpleLayoutEngine::new();
-
-        engine.place_nodes(&mut doc);
-
-        let backend = SVGRenderer::new();
-        let mut bytes: Vec<u8> = vec![];
-
-        backend.render(&doc, &mut bytes).expect("generate SVG");
-
-        let svg = String::from_utf8(bytes).unwrap();
-
-        assert_eq!(svg, "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\">\n<rect fill=\"#1C1C1C\" height=\"100%\" width=\"100%\"/>\n<defs/>\n</svg>");
-    }
-}
