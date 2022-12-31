@@ -1,5 +1,9 @@
+use ariadne::{Color, Fmt, Label, Report, ReportBuilder, ReportKind, Source};
+use seiren::layout::{LayoutEngine, SimpleLayoutEngine};
 use seiren::parser::parse;
+use seiren::renderer::{Renderer, SVGRenderer};
 use std::io;
+use std::ops::Range;
 use std::{fs, io::Read};
 
 fn main() -> Result<(), io::Error> {
@@ -15,11 +19,101 @@ fn main() -> Result<(), io::Error> {
         s
     };
 
-    let (ast, errs, parse_errs) = parse(&src);
+    let (ast, tokenize_errs, parse_errs) = parse(&src);
 
-    println!("{:?} - {:?}", errs, parse_errs);
+    // Convert both errors into error::Simple<String>
+    let errors = tokenize_errs
+        .into_iter()
+        .map(|x| x.map(|c| c.to_string()))
+        .chain(parse_errs.into_iter().map(|e| e.map(|tok| tok.to_string())))
+        .collect::<Vec<_>>();
+
+    // Report errors
+    for e in errors {
+        let report: ReportBuilder<Range<usize>> =
+            Report::build(ReportKind::Error, (), e.span().start);
+
+        let report = match e.reason() {
+            chumsky::error::SimpleReason::Unclosed { span, delimiter } => report
+                .with_message(format!(
+                    "Unclosed delimiter {}",
+                    delimiter.fg(Color::Yellow)
+                ))
+                .with_label(
+                    Label::new(span.clone())
+                        .with_message(format!(
+                            "Unclosed delimiter {}",
+                            delimiter.fg(Color::Yellow)
+                        ))
+                        .with_color(Color::Yellow),
+                )
+                .with_label(
+                    Label::new(e.span())
+                        .with_message(format!(
+                            "Must be closed before this {}",
+                            e.found()
+                                .unwrap_or(&"end of file".to_string())
+                                .fg(Color::Red)
+                        ))
+                        .with_color(Color::Red),
+                ),
+            chumsky::error::SimpleReason::Unexpected => report
+                .with_message(format!(
+                    "{}, expected {}",
+                    if e.found().is_some() {
+                        "Unexpected token in input"
+                    } else {
+                        "Unexpected end of input"
+                    },
+                    if e.expected().len() == 0 {
+                        "something else".to_string()
+                    } else {
+                        e.expected()
+                            .map(|expected| match expected {
+                                Some(expected) => expected.to_string(),
+                                None => "end of input".to_string(),
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    }
+                ))
+                .with_label(
+                    Label::new(e.span())
+                        .with_message(format!(
+                            "Unexpected token {}",
+                            e.found()
+                                .unwrap_or(&"end of file".to_string())
+                                .fg(Color::Red)
+                        ))
+                        .with_color(Color::Red),
+                ),
+            chumsky::error::SimpleReason::Custom(msg) => report.with_message(msg).with_label(
+                Label::new(e.span())
+                    .with_message(format!("{}", msg.fg(Color::Red)))
+                    .with_color(Color::Red),
+            ),
+        };
+
+        report.finish().print(Source::from(&src)).unwrap();
+    }
+
+    // AST -> MIR
+
     if let Some(ast) = ast {
-        println!("{}", ast);
+        let mut doc = ast.into_mir();
+        let engine = SimpleLayoutEngine::new();
+
+        engine.place_nodes(&mut doc);
+        engine.place_connection_points(&mut doc);
+        engine.draw_edge_path(&mut doc);
+
+        let backend = SVGRenderer::new();
+        let stdout = io::stdout();
+        let mut handle = stdout.lock();
+
+        backend
+            .render(&doc, &mut handle)
+            .expect("Couldn't render as SVG.");
     }
 
     Ok(())

@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 svg = "0.13.0"
 chumsky = "0.8.0"
+ariadne = "0.1.5"
 derive_builder = "0.12.0"
 derive_more = "0.99.17"
 thiserror = "1.0.24"
