@@ -277,3 +277,36 @@ fn erd_module_parser() -> impl Parser<Token, Module, Error = Simple<Token>> + Cl
             module
         })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use difference::assert_diff;
+
+    #[test]
+    fn test_script() {
+        let src = "
+        erd G {
+            users {
+                id     int PK
+                `uuid` uuid
+                `text` text; about_html text
+            }
+            users.id o--o posts.created_by
+        }";
+        let (ast, errs, parse_errs) = parse(src);
+
+        assert!(errs.is_empty());
+        assert!(parse_errs.is_empty());
+        assert!(ast.is_some());
+        assert_diff!(
+            &ast.unwrap().to_string(),
+            "erd G {
+  users { id int PK; uuid uuid; text text; about_html text }
+  users.id o--o posts.created_by
+}",
+            "\n",
+            0
+        );
+    }
+}
