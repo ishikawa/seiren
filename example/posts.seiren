@@ -1,23 +1,23 @@
-// ERD module that contains `users` and `posts` tables.
+// Define an ERD module that is named "posts"
 erd posts {
-  define users {
-    id int PK,
-    uuid uuid,
-    email text,
-    text text,
-    about_html text,
-    created_at timestamp,
+  users {
+    id int PK
+    uuid uuid
+    email text
+    text text
+    about_html text
+    created_at timestamp
   }
   
-  define posts {
-    id int PK,
-    uuid uuid,
-    title text,
-    content text,
-    created_at timestamp,
-    created_by int FK,
+  posts {
+    id int PK
+    uuid uuid
+    title text
+    content text
+    created_at timestamp
+    created_by int FK
   }
-  
-  // posts.FK refers users.PK
-  posts.created_by o--o users.id
+
+  // Edges
+  users.id o--o posts.created_by
 }
