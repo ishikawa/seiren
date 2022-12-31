@@ -305,11 +305,55 @@ users {
     `uuid` uuid
     `text` text; about_html text
 }
+posts {
+    id         int PK
+    title      text
+    body       text
+    created_by int FK
+}
 users.id o--o posts.created_by
 }",
             "erd G {
     users { id int PK; uuid uuid; text text; about_html text }
+    posts { id int PK; title text; body text; created_by int FK }
     users.id o--o posts.created_by
+}"
+        );
+    }
+
+    #[test]
+    fn spaces_and_comments() {
+        assert_ast!(
+            " // define a new ERD module
+erd\t//line comment here
+  ERD // name \"G\"
+{ // start module definition
+    table1 // A
+    // B
+    { // C
+        // `id` column
+        id int PK // primary key
+    // end
+    } // / table 1
+
+    // table 2
+    table2 {
+        id int PK
+        table1_id int FK
+    }
+
+    // define a new edge
+    table1.id // start node
+    // o
+    o--o // path
+    // o
+    table2.table1_id // end node
+    // end of module
+} // eof",
+            "erd ERD {
+    table1 { id int PK }
+    table2 { id int PK; table1_id int FK }
+    table1.id o--o table2.table1_id
 }"
         );
     }
