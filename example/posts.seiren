@@ -1,0 +1,23 @@
+// Define an ERD module that is named "posts"
+erd posts {
+  users {
+    id         int PK
+    `uuid`     uuid
+    email      text
+    `text`     text
+    about_html text
+    created_at timestamp
+  }
+  
+  posts {
+    id         int PK
+    `uuid`     uuid
+    title      text
+    content    text
+    created_at timestamp
+    created_by int FK
+  }
+
+  // Edges
+  users.id o--o posts.created_by
+}
