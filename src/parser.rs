@@ -283,30 +283,34 @@ mod tests {
     use super::*;
     use difference::assert_diff;
 
+    // This macro expands two strings `src` and `expected` into a code that
+    // compare an AST generated from `src` and `expected` string.
+    macro_rules! assert_ast {
+        ( $src:expr, $expected:expr ) => {
+            let (ast, errs, parse_errs) = parse($src);
+
+            assert!(errs.is_empty());
+            assert!(parse_errs.is_empty());
+            assert!(ast.is_some());
+            assert_diff!(&ast.unwrap().to_string(), $expected, "\n", 0);
+        };
+    }
+
     #[test]
     fn test_script() {
-        let src = "
-        erd G {
-            users {
-                id     int PK
-                `uuid` uuid
-                `text` text; about_html text
-            }
-            users.id o--o posts.created_by
-        }";
-        let (ast, errs, parse_errs) = parse(src);
-
-        assert!(errs.is_empty());
-        assert!(parse_errs.is_empty());
-        assert!(ast.is_some());
-        assert_diff!(
-            &ast.unwrap().to_string(),
+        assert_ast!(
             "erd G {
-  users { id int PK; uuid uuid; text text; about_html text }
-  users.id o--o posts.created_by
+users {
+    id     int PK
+    `uuid` uuid
+    `text` text; about_html text
+}
+users.id o--o posts.created_by
 }",
-            "\n",
-            0
+            "erd G {
+    users { id int PK; uuid uuid; text text; about_html text }
+    users.id o--o posts.created_by
+}"
         );
     }
 }

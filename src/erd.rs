@@ -172,7 +172,7 @@ impl fmt::Display for Module {
         }
         writeln!(f, "{{")?;
         for entry in self.entries.iter() {
-            writeln!(f, "  {}", entry)?;
+            writeln!(f, "    {}", entry)?;
         }
         write!(f, "}}")
     }
