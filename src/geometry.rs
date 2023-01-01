@@ -63,7 +63,7 @@ pub struct Point {
 }
 
 impl Point {
-    pub fn new(x: f32, y: f32) -> Self {
+    pub const fn new(x: f32, y: f32) -> Self {
         Self { x, y }
     }
 
@@ -80,7 +80,7 @@ pub struct Size {
 }
 
 impl Size {
-    pub fn new(width: f32, height: f32) -> Self {
+    pub const fn new(width: f32, height: f32) -> Self {
         Self { width, height }
     }
 }
@@ -104,7 +104,7 @@ pub struct Rect {
 }
 
 impl Rect {
-    pub fn new(origin: Point, size: Size) -> Self {
+    pub const fn new(origin: Point, size: Size) -> Self {
         Self { origin, size }
     }
 
@@ -142,6 +142,34 @@ impl Rect {
 
     pub fn height(&self) -> f32 {
         self.size.height
+    }
+
+    /// Returns a rectangle that is smaller or larger than the source
+    /// rectangle, with the same center point.
+    ///
+    /// A rectangle. The origin value is offset in the x-axis by the distance specified by
+    /// the `dx` parameter and in the y-axis by the distance specified by the `dy` parameter,
+    /// and its size adjusted by (`2*dx`, `2*dy`), relative to the source rectangle.
+    /// If `dx` and `dy` are positive values, then the rectangle’s size is decreased.
+    /// If `dx` and `dy` are negative values, the rectangle’s size is increased.
+    ///
+    /// If the resulting rectangle would have a negative height or width,
+    /// a returned rectangle has a zero size.
+    ///
+    /// - `dx` - The x-coordinate value to use for adjusting the source rectangle.
+    ///          To create an inset rectangle, specify a positive value.
+    ///          To create a larger, encompassing rectangle, specify a negative value.
+    /// - `dy` - The y-coordinate value to use for adjusting the source rectangle.
+    ///          To create an inset rectangle, specify a positive value.
+    ///          To create a larger, encompassing rectangle, specify a negative value.
+    pub fn inset_by(&self, dx: f32, dy: f32) -> Self {
+        let origin = Point::new(self.origin.x + dx, self.origin.y + dy);
+        let size = Size::new(
+            (self.size.width - (dx * 2.0)).max(0.0),
+            (self.size.height - (dy * 2.0)).max(0.0),
+        );
+
+        Self::new(origin, size)
     }
 }
 
@@ -220,5 +248,20 @@ mod tests {
 
         assert_eq!(pt1.distance(&pt2), 2.8284271247461903);
         assert_eq!(pt1.distance(&pt2), pt2.distance(&pt1));
+    }
+
+    #[test]
+    fn rect_inset_by() {
+        let r = Rect::new(Point::new(10.0, 20.0), Size::new(50.0, 50.0));
+
+        assert_eq!(r.inset_by(0.0, 0.0), r);
+        assert_eq!(
+            r.inset_by(5.0, -10.0),
+            Rect::new(Point::new(15.0, 10.0), Size::new(40.0, 70.0))
+        );
+        assert_eq!(
+            r.inset_by(30.0, 30.0),
+            Rect::new(Point::new(40.0, 50.0), Size::new(0.0, 0.0))
+        );
     }
 }
