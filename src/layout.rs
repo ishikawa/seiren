@@ -32,13 +32,17 @@ impl SimpleLayoutEngine {
     }
 }
 
+impl SimpleLayoutEngine {
+    const ORIGIN: Point = Point::new(50.0, 80.0);
+    const LINE_HEIGHT: f32 = 35.0;
+    const RECORD_WIDTH: f32 = 300.0;
+    const RECORD_SPACE: f32 = 80.0;
+}
+
 impl LayoutEngine for SimpleLayoutEngine {
     fn place_nodes(&self, doc: &mut mir::Document) {
-        let x = 50f32;
-        let y = 80f32;
-        let line_height = 35f32;
-        let record_width = 300f32;
-        let record_space = 80f32;
+        let x = Self::ORIGIN.x;
+        let y = Self::ORIGIN.y;
 
         // Iterate records
         let child_id_vec = doc.body().children().collect::<Vec<_>>();
@@ -48,24 +52,24 @@ impl LayoutEngine for SimpleLayoutEngine {
             let NodeKind::Record(_) = record_node.kind() else  { continue };
 
             let n_records = record_node.children().len() as f32;
-            let x = x + (record_width + record_space) * record_index as f32;
+            let x = x + (Self::RECORD_WIDTH + Self::RECORD_SPACE) * record_index as f32;
 
-            let record_height = line_height * n_records;
+            let record_height = Self::LINE_HEIGHT * n_records;
 
             record_node.origin = Some(Point::new(x, y));
-            record_node.size = Some(Size::new(record_width.into(), record_height.into()));
+            record_node.size = Some(Size::new(Self::RECORD_WIDTH.into(), record_height.into()));
 
             // children
             let base_y = y;
             let field_id_vec = record_node.children().collect::<Vec<_>>();
 
             for (field_index, field_node_id) in field_id_vec.iter().enumerate() {
-                let y = base_y + line_height * field_index as f32;
+                let y = base_y + Self::LINE_HEIGHT * field_index as f32;
                 let Some(field_node) = doc.get_node_mut(field_node_id) else { continue };
                 let NodeKind::Field(_) = field_node.kind() else  { continue };
 
                 field_node.origin = Some(Point::new(x, y));
-                field_node.size = Some(Size::new(record_width, line_height));
+                field_node.size = Some(Size::new(Self::RECORD_WIDTH, Self::LINE_HEIGHT));
             }
         }
     }
@@ -231,5 +235,195 @@ impl LayoutEngine for SimpleLayoutEngine {
         for edge in doc.edges_mut() {
             edge.path = Some(paths.pop_front().unwrap());
         }
+
+        // We don't actually draw the edges here, but only calculate the set of points through
+        // which the edges pass.
+        //
+        // EDGE DRAWING ALGORITHM
+        // ======================
+        //
+        // To draw edges between SHAPE nodes, place JUNCTION nodes on the plane where
+        // the edges can pass through and apply the shortest path algorithm.
+        //
+        // - `SHAPE node` - Rigid shapes that are obstables. (e.g. Record)
+        // - `JUNCTION node` - Virtual nodes that are placed only for edge drawing. Only virtual nodes placed
+        //                     **vertically or horizontally** can be joined.
+        //
+        // Dijkstra's algorithm or A* can be used as the shortest path algorithm.
+        //
+        // ALGORITHM
+        // ---------
+        // Place junction nodes on the place:
+        //
+        // a. Place junction nodes at the four corner points around each shape node.
+        // b. Draw a straight line from the start/end connection points and place new junction nodes at
+        //    a maximum of two points that intersect the junction nodes (a) in a cross direction.
+        // b. From the start/end junction point, draw a straight line horizontally or vertically until
+        //    it collides with another shape node, and place a new junction node at the point where
+        //    it intersects the junction node (a) in a crosswise direction.
+        // c. Remove junction nodes that are overlapped by other shape nodes.
+        let mut edge_junctions: Vec<Point> = vec![];
+
+        // a. Place junction nodes at the four corner points around each shape node.
+        let shape_junctions = self.edge_junction_nodes_around_shapes(&doc);
+
+        // b. From the start/end junction point, draw a straight line horizontally or vertically until
+        //    it collides with another shape node, and place a new junction node at the point where
+        //    it intersects the junction node (a) in a crosswise direction.
+        for edge in doc.edges() {
+            let Some(start_node) = doc.get_node(&edge.start_node_id) else { continue };
+            let Some(end_node) = doc.get_node(&edge.end_node_id) else { continue };
+
+            for c in start_node.connection_points() {
+                let junctions = self.edge_junction_nodes_from_connection_point(
+                    &doc,
+                    start_node,
+                    c,
+                    &shape_junctions,
+                );
+
+                edge_junctions.push(*c);
+                edge_junctions.extend(junctions);
+            }
+            for c in end_node.connection_points() {
+                let junctions = self.edge_junction_nodes_from_connection_point(
+                    &doc,
+                    end_node,
+                    c,
+                    &shape_junctions,
+                );
+
+                edge_junctions.push(*c);
+                edge_junctions.extend(junctions);
+            }
+        }
+
+        edge_junctions.extend(shape_junctions);
+
+        for j in edge_junctions {
+            doc.append_edge_junction(j);
+        }
+    }
+}
+
+impl SimpleLayoutEngine {
+    // a. Place junction nodes at the four corner points around each shape node.
+    fn edge_junction_nodes_around_shapes(&self, doc: &mir::Document) -> Vec<Point> {
+        let margin = Self::RECORD_SPACE / 2.0;
+        let mut junctions: Vec<Point> = vec![];
+
+        for child_id in doc.body().children() {
+            let Some(record_node) = doc.get_node(&child_id) else { continue };
+            let Some(record_rect) = record_node.rect() else { continue };
+
+            let junction_rect = record_rect.inset_by(-margin, -margin);
+
+            junctions.extend([
+                junction_rect.origin,
+                Point::new(junction_rect.max_x(), junction_rect.min_y()),
+                Point::new(junction_rect.max_x(), junction_rect.max_y()),
+                Point::new(junction_rect.min_x(), junction_rect.max_y()),
+            ]);
+        }
+
+        junctions
+    }
+
+    // b. From the start/end junction point, draw a straight line horizontally or vertically until
+    //    it collides with another shape node, and place a new junction node at the point where
+    //    it intersects the junction node (a) in a crosswise direction.
+    fn edge_junction_nodes_from_connection_point(
+        &self,
+        doc: &mir::Document,
+        node: &mir::Node,
+        connection_point: &Point,
+        other_junctions: &[Point],
+    ) -> Vec<Point> {
+        let mut junctions = vec![];
+        let Some(rect) = node.rect() else { return junctions };
+        let center = rect.center();
+
+        let shape_rects = doc
+            .body()
+            .children()
+            .filter_map(|x| doc.get_node(&x))
+            .filter_map(|x| x.rect())
+            .collect::<Vec<_>>();
+
+        if connection_point.x < center.x {
+            // Horizontally leftward
+            let mut min_x = 0.0f32;
+
+            for r in shape_rects {
+                if r.max_x() < connection_point.x
+                    && connection_point.y >= r.min_y()
+                    && connection_point.y <= r.max_y()
+                {
+                    min_x = min_x.max(r.max_x());
+                }
+            }
+
+            for j in other_junctions {
+                if j.x <= connection_point.x && j.x >= min_x {
+                    junctions.push(Point::new(j.x, connection_point.y));
+                }
+            }
+        } else if connection_point.x > center.x {
+            // Horizontally rightward
+            let mut max_x = f32::MAX;
+
+            for r in shape_rects {
+                if r.min_x() > connection_point.x
+                    && connection_point.y >= r.min_y()
+                    && connection_point.y <= r.max_y()
+                {
+                    max_x = max_x.min(r.min_x());
+                }
+            }
+
+            for j in other_junctions {
+                if j.x >= connection_point.x && j.x <= max_x {
+                    junctions.push(Point::new(j.x, connection_point.y));
+                }
+            }
+        } else if connection_point.y < center.y {
+            // Vertically downward
+            let mut max_y = f32::MAX;
+
+            for r in shape_rects {
+                if r.min_y() > connection_point.y
+                    && connection_point.x >= r.min_x()
+                    && connection_point.x <= r.max_x()
+                {
+                    max_y = max_y.min(r.min_y());
+                }
+            }
+
+            for j in other_junctions {
+                if j.y <= connection_point.y && j.y <= max_y {
+                    junctions.push(Point::new(connection_point.x, j.y));
+                }
+            }
+        } else if connection_point.y > center.y {
+            // Vertically upward
+            let mut min_y = 0.0f32;
+
+            for r in shape_rects {
+                if r.max_y() < connection_point.y
+                    && connection_point.x >= r.min_x()
+                    && connection_point.x <= r.max_x()
+                {
+                    min_y = min_y.max(r.max_y());
+                }
+            }
+
+            for j in other_junctions {
+                if j.y >= connection_point.y && j.y >= min_y {
+                    junctions.push(Point::new(connection_point.x, j.y));
+                }
+            }
+        }
+
+        junctions
     }
 }

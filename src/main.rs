@@ -5,6 +5,8 @@ use seiren::renderer::{Renderer, SVGRenderer};
 use std::io;
 use std::{fs, io::Read};
 
+const DEBUG: bool = true;
+
 fn main() -> Result<(), io::Error> {
     let mut filename = "(stdin)".to_string();
     let mut args = std::env::args();
@@ -112,10 +114,11 @@ fn main() -> Result<(), io::Error> {
         engine.place_connection_points(&mut doc);
         engine.draw_edge_path(&mut doc);
 
-        let backend = SVGRenderer::new();
+        let mut backend = SVGRenderer::new();
         let stdout = io::stdout();
         let mut handle = stdout.lock();
 
+        backend.enabled_debug(DEBUG);
         backend
             .render(&doc, &mut handle)
             .expect("Couldn't render as SVG.");

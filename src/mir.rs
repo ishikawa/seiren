@@ -85,6 +85,9 @@ pub enum NodeKind {
 pub struct Document {
     nodes: Vec<Node>,
     edges: Vec<Edge>,
+
+    // for debug
+    edge_junctions: Vec<Point>,
 }
 
 impl Document {
@@ -95,6 +98,7 @@ impl Document {
         Self {
             nodes: vec![node],
             edges: vec![],
+            edge_junctions: vec![],
         }
     }
 
@@ -148,6 +152,15 @@ impl Document {
 
     pub fn append_edge(&mut self, edge: Edge) {
         self.edges.push(edge);
+    }
+
+    // for debug
+    pub fn edge_junctions(&self) -> impl ExactSizeIterator<Item = &Point> {
+        self.edge_junctions.iter()
+    }
+
+    pub fn append_edge_junction(&mut self, point: Point) {
+        self.edge_junctions.push(point);
     }
 }
 

@@ -13,11 +13,23 @@ pub trait Renderer {
 }
 
 #[derive(Debug)]
-pub struct SVGRenderer {}
+pub struct SVGRenderer {
+    debug_enabled: bool,
+}
 
 impl SVGRenderer {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            debug_enabled: false,
+        }
+    }
+
+    pub fn debug_enabled(&self) -> bool {
+        self.debug_enabled
+    }
+
+    pub fn enabled_debug(&mut self, enabled: bool) {
+        self.debug_enabled = enabled;
     }
 }
 
@@ -181,6 +193,22 @@ impl Renderer for SVGRenderer {
         for edge in doc.edges() {
             let (edge_path, start_circle, end_circle) = self.draw_edge_connection(edge)?;
             svg_doc = svg_doc.add(edge_path).add(start_circle).add(end_circle);
+        }
+
+        // -- Draw debug info
+        if self.debug_enabled() {
+            let circle_radius = 4.0;
+
+            for junction in doc.edge_junctions() {
+                let circle = element::Circle::new()
+                    .set("cx", junction.x)
+                    .set("cy", junction.y)
+                    .set("r", circle_radius)
+                    .set("stroke", "white")
+                    .set("stroke-width", 1)
+                    .set("fill", "red");
+                svg_doc = svg_doc.add(circle);
+            }
         }
 
         writer.write_all(svg_doc.to_string().as_bytes())?;
