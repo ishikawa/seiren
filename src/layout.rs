@@ -137,7 +137,6 @@ impl LayoutEngine for SimpleLayoutEngine {
         }
     }
 
-    ///
     /// ```svgbob
     /// 0 - - - - - - - - - - - - - - - - - - - ->
     /// ! -------+
@@ -151,7 +150,7 @@ impl LayoutEngine for SimpleLayoutEngine {
     /// !        |  ctrl2(y) *           +-------
     /// !        |           | ctrl2(x)  |
     /// !        |           `--*--------o end
-    /// !        |                       |
+    /// v        |                       |
     /// ```
     fn draw_edge_path(&self, doc: &mut mir::Document) {
         let path_radius = 6.0;
@@ -162,15 +161,13 @@ impl LayoutEngine for SimpleLayoutEngine {
             let Some(start_node) = doc.get_node(&edge.start_node_id) else { continue };
             let Some(end_node) = doc.get_node(&edge.end_node_id) else { continue };
 
-            // Choose the combination with the shortest distance between two connection points.
-            let mut connection_points = (
-                // start point
-                Point::default(),
-                // end point
-                Point::default(),
-                // distance
-                f32::MAX,
-            );
+            // Give the combination with the maximum distance as the initial value, and choose
+            // the combination with the shortest distance between two connection points.
+            let mut connection_points: (
+                Point, // start point
+                Point, // end point
+                f32,   // distance
+            ) = (Point::default(), Point::default(), f32::MAX);
 
             for pt1 in start_node.connection_points() {
                 for pt2 in end_node.connection_points() {
@@ -200,12 +197,32 @@ impl LayoutEngine for SimpleLayoutEngine {
                 (start_cy - path_radius, end_cy + path_radius)
             };
 
+            // ```svgbob
+            // 0 - - - - - - - - - - - - - - - - - - - ->
+            // ! -------+
+            // !        |       (A)
+            // !  start o--------*--.
+            // !        |           |
+            // !        |           * (B)
+            // !        |           |
+            // !        |           |
+            // !        |           |
+            // !        |       (C) *           +-------
+            // !        |           | (D))      |
+            // !        |           `--*--------o (E)
+            // v        |                       |
+            // ```
             let mut path = Path::new(connection_points.0);
 
+            // (A)
             path.line_to(Point::new(ctrl1_x, start_cy));
+            // (B)
             path.quad_to(Point::new(mid_x, start_cy), Point::new(mid_x, ctrl1_y));
+            // (C)
             path.line_to(Point::new(mid_x, ctrl2_y));
+            // (D)
             path.quad_to(Point::new(mid_x, end_cy), Point::new(ctrl2_x, end_cy));
+            // (E)
             path.line_to(Point::new(end_cx, end_cy));
 
             paths.push_back(path);
