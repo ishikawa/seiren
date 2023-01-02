@@ -67,6 +67,11 @@ impl Point {
         Self { x, y }
     }
 
+    #[inline]
+    pub const fn zero() -> Self {
+        Self { x: 0.0, y: 0.0 }
+    }
+
     /// Returns the distance from this `Point` to a specified point.
     pub fn distance(&self, other: &Point) -> f32 {
         ((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt()
@@ -82,6 +87,14 @@ pub struct Size {
 impl Size {
     pub const fn new(width: f32, height: f32) -> Self {
         Self { width, height }
+    }
+
+    #[inline]
+    pub const fn zero() -> Self {
+        Self {
+            width: 0.0,
+            height: 0.0,
+        }
     }
 }
 
@@ -106,6 +119,14 @@ pub struct Rect {
 impl Rect {
     pub const fn new(origin: Point, size: Size) -> Self {
         Self { origin, size }
+    }
+
+    #[inline]
+    pub const fn zero() -> Self {
+        Self {
+            origin: Point::zero(),
+            size: Size::zero(),
+        }
     }
 
     #[inline]
@@ -288,6 +309,11 @@ mod tests {
 
         assert_eq!(pt1.distance(&pt2), 2.8284271247461903);
         assert_eq!(pt1.distance(&pt2), pt2.distance(&pt1));
+
+        let pt1 = Point::zero();
+        let pt2 = Point::new(3.0, 0.0);
+
+        assert_eq!(pt1.distance(&pt2), 3.0);
     }
 
     #[test]
@@ -301,8 +327,11 @@ mod tests {
         );
         assert_eq!(
             r.inset_by(30.0, 30.0),
-            Rect::new(Point::new(40.0, 50.0), Size::new(0.0, 0.0))
+            Rect::new(Point::new(40.0, 50.0), Size::zero())
         );
+
+        let r = Rect::new(Point::new(f32::MIN, f32::MIN), Size::new(1.0, 1.0));
+        assert_eq!(r.inset_by(f32::MAX, f32::MAX), Rect::zero());
     }
 
     #[test]
