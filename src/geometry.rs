@@ -108,38 +108,57 @@ impl Rect {
         Self { origin, size }
     }
 
+    #[inline]
+    pub fn origin(&self) -> &Point {
+        &self.origin
+    }
+
+    #[inline]
+    pub fn size(&self) -> &Size {
+        &self.size
+    }
+
+    #[inline]
     pub fn center(&self) -> Point {
         Point::new(self.mid_x(), self.mid_y())
     }
 
+    #[inline]
     pub fn min_x(&self) -> f32 {
         self.origin.x
     }
 
+    #[inline]
     pub fn mid_x(&self) -> f32 {
         self.origin.x + self.size.width / 2.0
     }
 
+    #[inline]
     pub fn max_x(&self) -> f32 {
         self.origin.x + self.size.width
     }
 
+    #[inline]
     pub fn min_y(&self) -> f32 {
         self.origin.y
     }
 
+    #[inline]
     pub fn mid_y(&self) -> f32 {
         self.origin.y + self.size.height / 2.0
     }
 
+    #[inline]
     pub fn max_y(&self) -> f32 {
         self.origin.y + self.size.height
     }
 
+    #[inline]
     pub fn width(&self) -> f32 {
         self.size.width
     }
 
+    #[inline]
     pub fn height(&self) -> f32 {
         self.size.height
     }
@@ -170,6 +189,27 @@ impl Rect {
         );
 
         Self::new(origin, size)
+    }
+
+    /// Returns whether a rectangle contains a specified point.
+    ///
+    /// `true` if the rectangle is not empty and the point is located within the rectangle;
+    /// otherwise, `false`.
+    ///
+    /// A point is considered inside the rectangle if its coordinates lie inside the rectangle,
+    /// or on the minimum X or minimum Y edge if and only if `include_edge` is `true`.
+    pub fn contains_point(&self, point: &Point, include_edge: bool) -> bool {
+        let min_x = self.min_x();
+        let max_x = self.max_x();
+        let min_y = self.min_y();
+        let max_y = self.max_y();
+
+        if point.x > min_x && point.x < max_x && point.y > min_y && point.y < max_y {
+            return true;
+        }
+
+        return include_edge
+            && (point.x == min_x || point.x == max_x || point.y == min_y || point.y == max_y);
     }
 }
 
@@ -263,5 +303,17 @@ mod tests {
             r.inset_by(30.0, 30.0),
             Rect::new(Point::new(40.0, 50.0), Size::new(0.0, 0.0))
         );
+    }
+
+    #[test]
+    fn rect_contains_point() {
+        let r = Rect::new(Point::new(10.0, 20.0), Size::new(50.0, 50.0));
+
+        assert!(r.contains_point(r.origin(), true));
+        assert!(!r.contains_point(r.origin(), false));
+
+        let p = Point::new(r.max_x(), r.max_y());
+        assert!(r.contains_point(&p, true));
+        assert!(!r.contains_point(&p, false));
     }
 }

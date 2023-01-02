@@ -313,7 +313,7 @@ impl LayoutEngine for SimpleLayoutEngine {
 
         'OUTER: for j in shape_junctions.iter().chain(crossing_junctions.iter()) {
             for r in &shape_rects {
-                if j.x > r.min_x() && j.x < r.max_x() && j.y > r.min_y() && j.y < r.max_y() {
+                if r.contains_point(j, false) {
                     continue 'OUTER;
                 }
             }
