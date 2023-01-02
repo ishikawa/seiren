@@ -310,27 +310,10 @@ impl LayoutEngine for SimpleLayoutEngine {
             }
         }
 
-        let mut edge_junctions: Vec<Point> = vec![];
-
-        // Remove junction nodes that overlap any (fatter) shapes. However, nodes on the edge of the
-        // shape must remain.
-        let shape_rects = doc
-            .body()
-            .children()
-            .filter_map(|x| doc.get_node(&x))
-            .filter_map(|x| x.rect())
-            .map(|r| r.inset_by(-Self::SHAPE_JUNCTION_MARGIN, -Self::SHAPE_JUNCTION_MARGIN))
-            .collect::<Vec<_>>();
-
-        'OUTER: for j in shape_junctions.iter().chain(crossing_junctions.iter()) {
-            for r in &shape_rects {
-                if r.contains_point(j, false) {
-                    continue 'OUTER;
-                }
-            }
-
-            edge_junctions.push(*j);
-        }
+        let mut edge_junctions = self.remove_overlapped_junction_nodes(
+            &doc,
+            shape_junctions.iter().chain(crossing_junctions.iter()),
+        );
 
         // Add start/end connection points.
         for edge in doc.edges() {
@@ -474,5 +457,35 @@ impl SimpleLayoutEngine {
         }
 
         junctions
+    }
+
+    fn remove_overlapped_junction_nodes<'a>(
+        &self,
+        doc: &mir::Document,
+        junctions: impl IntoIterator<Item = &'a Point>,
+    ) -> Vec<Point> {
+        let mut edge_junctions: Vec<Point> = vec![];
+
+        // Remove junction nodes that overlap any (fatter) shapes. However, nodes on the edge of the
+        // shape must remain.
+        let shape_rects = doc
+            .body()
+            .children()
+            .filter_map(|x| doc.get_node(&x))
+            .filter_map(|x| x.rect())
+            .map(|r| r.inset_by(-Self::SHAPE_JUNCTION_MARGIN, -Self::SHAPE_JUNCTION_MARGIN))
+            .collect::<Vec<_>>();
+
+        'OUTER: for j in junctions {
+            for r in &shape_rects {
+                if r.contains_point(j, false) {
+                    continue 'OUTER;
+                }
+            }
+
+            edge_junctions.push(*j);
+        }
+
+        edge_junctions
     }
 }
