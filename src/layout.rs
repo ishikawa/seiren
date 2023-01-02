@@ -245,8 +245,13 @@ impl LayoutEngine for SimpleLayoutEngine {
         // To draw edges between SHAPE nodes, we must develop an algorithm to solve the so-called
         // "Motion Planning" problem.
         //
-        // We try to place JUNCTION nodes on the plane where the edges can pass through and find the
-        // shortest path from the start point to the goal.
+        // We try to place JUNCTION nodes on the plane where the edges can pass through without
+        // intersecting any obstacles and find the shortest path from the start point to the goal.
+        //
+        // To place JUNCTION nodes around obstacles, we chose the _expanded obstacles_ approach to
+        // simplify the problem. We'll create larger, fatter obstacles of each obstacle that defined
+        // by the shadow traced as the "moving point" walks a loop around the object while
+        // maintaining contact with it.
         //
         // - `SHAPE node` - Rigid shapes that are obstacles. (e.g. Record)
         // - `JUNCTION node` - Virtual nodes that are placed only for edge drawing. Only virtual
@@ -258,23 +263,25 @@ impl LayoutEngine for SimpleLayoutEngine {
         // ---------
         // Place junction nodes on the place:
         //
-        // a. Place junction nodes at the four corner points around each shape node.
+        // a. For each shape node, create a new larger, fatter shape.
         //
-        // b. From the start/end connection point, draw a straight line horizontally or vertically
+        // b. Place junction nodes at the four corner points of (a)
+        //
+        // c. From the start/end connection point, draw a straight line horizontally or vertically
         //    until it collides with another shape node, and place a new junction node at the point
-        //    where it intersects the junction node (a) in a crosswise direction.
+        //    where it intersects the junction node (b) in a crosswise direction.
         //
-        // c. Remove junction nodes that overlap other shapes (including surrounding margins).
-        //    However, nodes on the edge of the shape must remain.
+        // d. Remove junction nodes that overlap any (fatter) shapes. However, nodes on the edge of
+        //    the shape must remain.
         //
-        // d. Add start/end connection points.
+        // e. Add start/end connection points.
 
-        // a. Place junction nodes at the four corner points around each shape node.
+        // Place junction nodes at the four corner points around each shape node.
         let shape_junctions = self.edge_junction_nodes_around_shapes(&doc);
 
-        // b. From the start/end junction point, draw a straight line horizontally or vertically until
-        //    it collides with another shape node, and place a new junction node at the point where
-        //    it intersects the junction node (a) in a crosswise direction.
+        // From the start/end junction point, draw a straight line horizontally or vertically until
+        // it collides with another shape node, and place a new junction node at the point where it
+        // intersects the junction node in a crosswise direction.
         let mut crossing_junctions: Vec<Point> = vec![];
 
         for edge in doc.edges() {
@@ -305,8 +312,8 @@ impl LayoutEngine for SimpleLayoutEngine {
 
         let mut edge_junctions: Vec<Point> = vec![];
 
-        // c. Remove junction nodes that overlap other shapes (including surrounding margins).
-        //    However, nodes on the edge of the shape must remain.
+        // Remove junction nodes that overlap any (fatter) shapes. However, nodes on the edge of the
+        // shape must remain.
         let shape_rects = doc
             .body()
             .children()
@@ -325,7 +332,7 @@ impl LayoutEngine for SimpleLayoutEngine {
             edge_junctions.push(*j);
         }
 
-        // d. Add start/end connection points.
+        // Add start/end connection points.
         for edge in doc.edges() {
             let Some(start_node) = doc.get_node(&edge.start_node_id) else { continue };
             let Some(end_node) = doc.get_node(&edge.end_node_id) else { continue };
@@ -347,7 +354,9 @@ impl LayoutEngine for SimpleLayoutEngine {
 impl SimpleLayoutEngine {
     const SHAPE_JUNCTION_MARGIN: f32 = Self::RECORD_SPACE / 2.0;
 
-    // a. Place junction nodes at the four corner points around each shape node.
+    // a. For each shape node, create a new larger, fatter shape.
+    //
+    // b. Place junction nodes at the four corner points of (a)
     fn edge_junction_nodes_around_shapes(&self, doc: &mir::Document) -> Vec<Point> {
         let margin = Self::SHAPE_JUNCTION_MARGIN;
         let mut junctions: Vec<Point> = vec![];
@@ -369,9 +378,9 @@ impl SimpleLayoutEngine {
         junctions
     }
 
-    // b. From the start/end junction point, draw a straight line horizontally or vertically until
-    //    it collides with another shape node, and place a new junction node at the point where it
-    //    intersects the junction node (a) in a crosswise direction.
+    // c. From the start/end connection point, draw a straight line horizontally or vertically
+    //    until it collides with another shape node, and place a new junction node at the point
+    //    where it intersects the junction node (b) in a crosswise direction.
     fn edge_junction_nodes_from_connection_point(
         &self,
         doc: &mir::Document,
