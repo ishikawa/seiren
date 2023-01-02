@@ -218,20 +218,17 @@ impl Rect {
     /// otherwise, `false`.
     ///
     /// A point is considered inside the rectangle if its coordinates lie inside the rectangle,
-    /// or on the minimum X or minimum Y edge if and only if `include_edge` is `true`.
-    pub fn contains_point(&self, point: &Point, include_edge: bool) -> bool {
+    /// or on the minimum X or minimum Y edge.
+    pub fn contains_point(&self, point: &Point) -> bool {
         let min_x = self.min_x();
         let max_x = self.max_x();
         let min_y = self.min_y();
         let max_y = self.max_y();
 
-        if point.x > min_x && point.x < max_x && point.y > min_y && point.y < max_y {
-            return true;
-        }
-
-        return include_edge
-            && (point.x == min_x || point.x == max_x || point.y == min_y || point.y == max_y);
+        point.x >= min_x && point.x <= max_x && point.y >= min_y && point.y <= max_y
     }
+
+    //pub fn intersects
 }
 
 /// `Path` is an analogue of SVG `<path>` element without visual properties.
@@ -338,11 +335,9 @@ mod tests {
     fn rect_contains_point() {
         let r = Rect::new(Point::new(10.0, 20.0), Size::new(50.0, 50.0));
 
-        assert!(r.contains_point(r.origin(), true));
-        assert!(!r.contains_point(r.origin(), false));
+        assert!(r.contains_point(r.origin()));
 
         let p = Point::new(r.max_x(), r.max_y());
-        assert!(r.contains_point(&p, true));
-        assert!(!r.contains_point(&p, false));
+        assert!(r.contains_point(&p));
     }
 }

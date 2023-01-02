@@ -1,5 +1,5 @@
 //! Layout engine
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 use crate::{
     geometry::{Path, Point, Size},
@@ -473,12 +473,18 @@ impl SimpleLayoutEngine {
             .children()
             .filter_map(|x| doc.get_node(&x))
             .filter_map(|x| x.rect())
-            .map(|r| r.inset_by(-Self::SHAPE_JUNCTION_MARGIN, -Self::SHAPE_JUNCTION_MARGIN))
+            .map(|r| {
+                r.inset_by(
+                    // Nodes on the edge of shapes must remain. So minus 1.0 from margin.
+                    -(Self::SHAPE_JUNCTION_MARGIN - 1.0),
+                    -(Self::SHAPE_JUNCTION_MARGIN - 1.0),
+                )
+            })
             .collect::<Vec<_>>();
 
         'OUTER: for j in junctions {
             for r in &shape_rects {
-                if r.contains_point(j, false) {
+                if r.contains_point(j) {
                     continue 'OUTER;
                 }
             }
