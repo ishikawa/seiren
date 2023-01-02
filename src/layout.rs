@@ -236,18 +236,21 @@ impl LayoutEngine for SimpleLayoutEngine {
             edge.path = Some(paths.pop_front().unwrap());
         }
 
-        // We don't actually draw the edges here, but only calculate the set of points through
-        // which the edges pass.
+        // We don't actually draw the edges here, but only calculate the set of points through which
+        // the edges pass.
         //
         // EDGE DRAWING ALGORITHM
         // ======================
         //
-        // To draw edges between SHAPE nodes, place JUNCTION nodes on the plane where
-        // the edges can pass through and apply the shortest path algorithm.
+        // To draw edges between SHAPE nodes, we must develop an algorithm to solve the so-called
+        // "Motion Planning" problem.
         //
-        // - `SHAPE node` - Rigid shapes that are obstables. (e.g. Record)
-        // - `JUNCTION node` - Virtual nodes that are placed only for edge drawing. Only virtual nodes placed
-        //                     **vertically or horizontally** can be joined.
+        // We try to place JUNCTION nodes on the plane where the edges can pass through and find the
+        // shortest path from the start point to the goal.
+        //
+        // - `SHAPE node` - Rigid shapes that are obstacles. (e.g. Record)
+        // - `JUNCTION node` - Virtual nodes that are placed only for edge drawing. Only virtual
+        //                     nodes placed **vertically or horizontally** can be joined.
         //
         // Dijkstra's algorithm or A* can be used as the shortest path algorithm.
         //
@@ -256,13 +259,14 @@ impl LayoutEngine for SimpleLayoutEngine {
         // Place junction nodes on the place:
         //
         // a. Place junction nodes at the four corner points around each shape node.
-        // b. Draw a straight line from the start/end connection points and place new junction nodes at
-        //    a maximum of two points that intersect the junction nodes (a) in a cross direction.
-        // b. From the start/end connection point, draw a straight line horizontally or vertically until
-        //    it collides with another shape node, and place a new junction node at the point where
-        //    it intersects the junction node (a) in a crosswise direction.
-        // c. Remove junction nodes that overlap other shapes (including surrounding margins). However,
-        //    nodes on the edge of the shape must remain.
+        //
+        // b. From the start/end connection point, draw a straight line horizontally or vertically
+        //    until it collides with another shape node, and place a new junction node at the point
+        //    where it intersects the junction node (a) in a crosswise direction.
+        //
+        // c. Remove junction nodes that overlap other shapes (including surrounding margins).
+        //    However, nodes on the edge of the shape must remain.
+        //
         // d. Add start/end connection points.
 
         // a. Place junction nodes at the four corner points around each shape node.
@@ -301,8 +305,8 @@ impl LayoutEngine for SimpleLayoutEngine {
 
         let mut edge_junctions: Vec<Point> = vec![];
 
-        // c. Remove junction nodes that overlap other shapes (including surrounding margins). However,
-        //    nodes on the edge of the shape must remain.
+        // c. Remove junction nodes that overlap other shapes (including surrounding margins).
+        //    However, nodes on the edge of the shape must remain.
         let shape_rects = doc
             .body()
             .children()
@@ -366,8 +370,8 @@ impl SimpleLayoutEngine {
     }
 
     // b. From the start/end junction point, draw a straight line horizontally or vertically until
-    //    it collides with another shape node, and place a new junction node at the point where
-    //    it intersects the junction node (a) in a crosswise direction.
+    //    it collides with another shape node, and place a new junction node at the point where it
+    //    intersects the junction node (a) in a crosswise direction.
     fn edge_junction_nodes_from_connection_point(
         &self,
         doc: &mir::Document,
