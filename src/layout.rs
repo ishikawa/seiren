@@ -385,11 +385,10 @@ impl SimpleLayoutEngine {
         if connection_point.x < center.x {
             // Horizontally leftward
             let mut min_x = 0.0f32;
+            let line_end = Point::new(f32::MIN, connection_point.y);
 
             for r in shape_rects {
-                if r.max_x() < connection_point.x
-                    && connection_point.y >= r.min_y()
-                    && connection_point.y <= r.max_y()
+                if r.max_x() < connection_point.x && r.intersects_line(&connection_point, &line_end)
                 {
                     min_x = min_x.max(r.max_x());
                 }
@@ -403,11 +402,10 @@ impl SimpleLayoutEngine {
         } else if connection_point.x > center.x {
             // Horizontally rightward
             let mut max_x = f32::MAX;
+            let line_end = Point::new(f32::MAX, connection_point.y);
 
             for r in shape_rects {
-                if r.min_x() > connection_point.x
-                    && connection_point.y >= r.min_y()
-                    && connection_point.y <= r.max_y()
+                if r.min_x() > connection_point.x && r.intersects_line(&connection_point, &line_end)
                 {
                     max_x = max_x.min(r.min_x());
                 }
@@ -421,11 +419,10 @@ impl SimpleLayoutEngine {
         } else if connection_point.y < center.y {
             // Vertically downward
             let mut max_y = f32::MAX;
+            let line_end = Point::new(connection_point.x, f32::MAX);
 
             for r in shape_rects {
-                if r.min_y() > connection_point.y
-                    && connection_point.x >= r.min_x()
-                    && connection_point.x <= r.max_x()
+                if r.min_y() > connection_point.y && r.intersects_line(&connection_point, &line_end)
                 {
                     max_y = max_y.min(r.min_y());
                 }
@@ -439,11 +436,10 @@ impl SimpleLayoutEngine {
         } else if connection_point.y > center.y {
             // Vertically upward
             let mut min_y = 0.0f32;
+            let line_end = Point::new(connection_point.x, f32::MIN);
 
             for r in shape_rects {
-                if r.max_y() < connection_point.y
-                    && connection_point.x >= r.min_x()
-                    && connection_point.x <= r.max_x()
+                if r.max_y() < connection_point.y && r.intersects_line(&connection_point, &line_end)
                 {
                     min_y = min_y.max(r.max_y());
                 }

@@ -228,7 +228,66 @@ impl Rect {
         point.x >= min_x && point.x <= max_x && point.y >= min_y && point.y <= max_y
     }
 
-    //pub fn intersects
+    /// The Liang-Barsky algorithm
+    /// https://gist.github.com/ChickenProp/3194723
+    ///
+    /// ```svgbob
+    ///                ^(x_0 + Δ_x, y_0 + Δ_y)
+    ///               /      y_min
+    ///            *-/-------------------*
+    ///            |/                    |
+    ///            /                     |
+    ///           /|                     |
+    ///          / |                     |
+    ///         *  |                     |
+    ///  (x_0, y_0)|                     |
+    ///            |                     |
+    ///            |                     |
+    ///            |                     |
+    ///      x_min *---------------------* x_max
+    ///                     y_max
+    /// ```
+    pub fn intersects_line(&self, a: &Point, b: &Point) -> bool {
+        let (x, y, vx, vy) = if b.x < a.x {
+            (b.x, b.y, a.x - b.x, a.y - b.y)
+        } else {
+            (a.x, a.y, b.x - a.x, b.y - a.y)
+        };
+        let left = self.min_x();
+        let right = self.max_x();
+        let top = self.min_y();
+        let bottom = self.max_y();
+
+        let p = [-vx, vx, -vy, vy];
+        let q = [x - left, right - x, y - top, bottom - y];
+
+        let mut u1 = f32::NEG_INFINITY;
+        let mut u2 = f32::INFINITY;
+
+        for i in 0..4 {
+            if p[i] == 0.0 {
+                if q[i] < 0.0 {
+                    return false;
+                }
+            } else {
+                let t = q[i] / p[i];
+                if p[i] < 0.0 && u1 < t {
+                    u1 = t
+                } else if p[i] > 0.0 && u2 > t {
+                    u2 = t
+                }
+            }
+        }
+
+        if u1 > u2 || u1 > 1.0 || u1 < 0.0 {
+            return false;
+        }
+
+        // collision.x = x + u1 * vx;
+        // collision.y = y + u1 * vy;
+
+        true
+    }
 }
 
 /// `Path` is an analogue of SVG `<path>` element without visual properties.
@@ -339,5 +398,24 @@ mod tests {
 
         let p = Point::new(r.max_x(), r.max_y());
         assert!(r.contains_point(&p));
+    }
+
+    #[test]
+    fn rect_intersects_line() {
+        let r = Rect::new(Point::zero(), Size::new(30.0, 30.0));
+
+        // The line segment is entirely outside the rectangle.
+        assert!(!r.intersects_line(&Point::new(-1.0, 0.0), &Point::new(-1.0, 30.0)));
+        assert!(!r.intersects_line(&Point::new(0.0, 31.0), &Point::new(30.0, 40.0)));
+
+        // The line segment is entirely inside the rectangle.
+        assert!(!r.intersects_line(&Point::new(10.0, 10.0), &Point::new(20.0, 10.0)));
+
+        // One end of the line segment is inside and the other is outside.
+        assert!(r.intersects_line(&Point::new(-10.0, 10.0), &Point::new(20.0, 10.0)));
+        assert!(r.intersects_line(&Point::zero(), &Point::new(-10.0, 0.0)));
+
+        // The line segment starts outside the rectangle, enters it, and leaves it again.
+        assert!(r.intersects_line(&Point::new(-10.0, 10.0), &Point::new(50.0, 20.0)));
     }
 }
