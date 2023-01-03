@@ -108,17 +108,18 @@ fn main() -> Result<(), io::Error> {
 
     if let Some(ast) = ast {
         let mut doc = ast.into_mir();
-        let engine = SimpleLayoutEngine::new();
+        let mut engine = SimpleLayoutEngine::new();
 
         engine.place_nodes(&mut doc);
         engine.place_connection_points(&mut doc);
         engine.draw_edge_path(&mut doc);
 
         let mut backend = SVGRenderer::new();
+        backend.edge_route_graph = Some(engine.edge_route_graph());
+
         let stdout = io::stdout();
         let mut handle = stdout.lock();
 
-        backend.enabled_debug(DEBUG);
         backend
             .render(&doc, &mut handle)
             .expect("Couldn't render as SVG.");

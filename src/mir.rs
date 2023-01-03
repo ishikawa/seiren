@@ -12,7 +12,6 @@
 //! ```
 use crate::color::WebColor;
 use crate::geometry::{Path, Point, Rect, Size};
-use crate::layout::RouteGraph;
 use derive_builder::Builder;
 use derive_more::Display;
 
@@ -86,9 +85,6 @@ pub enum NodeKind {
 pub struct Document {
     nodes: Vec<Node>,
     edges: Vec<Edge>,
-
-    // for debug
-    edge_route_graph: RouteGraph,
 }
 
 impl Document {
@@ -99,7 +95,6 @@ impl Document {
         Self {
             nodes: vec![node],
             edges: vec![],
-            edge_route_graph: RouteGraph::new(),
         }
     }
 
@@ -153,15 +148,6 @@ impl Document {
 
     pub fn append_edge(&mut self, edge: Edge) {
         self.edges.push(edge);
-    }
-
-    // for debug
-    pub(crate) fn edge_route_graph(&self) -> &RouteGraph {
-        &self.edge_route_graph
-    }
-
-    pub(crate) fn edge_route_graph_mut(&mut self) -> &mut RouteGraph {
-        &mut self.edge_route_graph
     }
 }
 

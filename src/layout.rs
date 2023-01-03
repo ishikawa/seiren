@@ -10,24 +10,24 @@ pub trait LayoutEngine {
     /// Place all nodes on 2D coordination.
     ///
     /// The engine must assign `origin` and `size` of all nodes.
-    fn place_nodes(&self, doc: &mut mir::Document);
+    fn place_nodes(&mut self, doc: &mut mir::Document);
 
     /// Place all connection points for every node.
     ///
     /// The engine must add all possible connection points to `connection_points` of nodes.
-    fn place_connection_points(&self, doc: &mut mir::Document);
+    fn place_connection_points(&mut self, doc: &mut mir::Document);
 
     /// Draw path between both ends (connection points) of each edge.
     ///
     /// The engine must build a `path` of edges.
-    fn draw_edge_path(&self, doc: &mut mir::Document);
+    fn draw_edge_path(&mut self, doc: &mut mir::Document);
 }
 
 /// Represents routes in a place by graph. Every junction of two edges will be a node of the graph.
 /// Neighboring junctions are connected by edges. Each nodes neighbors four other nodes and each
 /// edge is NOT directed so shared by two junctions.
 #[derive(Debug, Clone)]
-pub(crate) struct RouteGraph {
+pub struct RouteGraph {
     nodes: Vec<RouteNode>,
     // We use adjacency list as our primary data structure to represent graphs because a graph is
     // relatively sparse.
@@ -67,10 +67,10 @@ impl RouteGraph {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct RouteNodeId(usize);
+pub struct RouteNodeId(usize);
 
 #[derive(Debug, Clone)]
-pub(crate) struct RouteNode {
+pub struct RouteNode {
     id: RouteNodeId,
     point: Point,
 }
@@ -90,7 +90,7 @@ impl RouteNode {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct RouteEdge {
+pub struct RouteEdge {
     dest: RouteNodeId,
 }
 
@@ -100,11 +100,16 @@ impl RouteEdge {
     }
 }
 #[derive(Debug)]
-pub struct SimpleLayoutEngine {}
+pub struct SimpleLayoutEngine {
+    // for debug
+    edge_route_graph: RouteGraph,
+}
 
 impl SimpleLayoutEngine {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            edge_route_graph: RouteGraph::new(),
+        }
     }
 }
 
@@ -113,10 +118,15 @@ impl SimpleLayoutEngine {
     const LINE_HEIGHT: f32 = 35.0;
     const RECORD_WIDTH: f32 = 300.0;
     const RECORD_SPACE: f32 = 80.0;
+
+    // for debug
+    pub fn edge_route_graph(&self) -> &RouteGraph {
+        &self.edge_route_graph
+    }
 }
 
 impl LayoutEngine for SimpleLayoutEngine {
-    fn place_nodes(&self, doc: &mut mir::Document) {
+    fn place_nodes(&mut self, doc: &mut mir::Document) {
         let x = Self::ORIGIN.x;
         let y = Self::ORIGIN.y;
 
@@ -150,7 +160,7 @@ impl LayoutEngine for SimpleLayoutEngine {
         }
     }
 
-    fn place_connection_points(&self, doc: &mut mir::Document) {
+    fn place_connection_points(&mut self, doc: &mut mir::Document) {
         let child_id_vec = doc.body().children().collect::<Vec<_>>();
 
         for (_, child_id) in child_id_vec.iter().enumerate() {
@@ -232,7 +242,7 @@ impl LayoutEngine for SimpleLayoutEngine {
     /// !        |           `--*--------o end
     /// v        |                       |
     /// ```
-    fn draw_edge_path(&self, doc: &mut mir::Document) {
+    fn draw_edge_path(&mut self, doc: &mut mir::Document) {
         let path_radius = 6.0;
 
         let mut paths: VecDeque<Path> = VecDeque::with_capacity(doc.edges().len());
@@ -405,7 +415,7 @@ impl LayoutEngine for SimpleLayoutEngine {
         }
 
         for j in edge_junctions {
-            doc.edge_route_graph_mut().add_node(j);
+            self.edge_route_graph.add_node(j);
         }
     }
 }

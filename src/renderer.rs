@@ -3,6 +3,7 @@ use crate::{
     color::{RGBColor, WebColor},
     error::BackendError,
     geometry::{PathCommand, Point},
+    layout::RouteGraph,
     mir,
 };
 use std::io::Write;
@@ -13,27 +14,20 @@ pub trait Renderer {
 }
 
 #[derive(Debug)]
-pub struct SVGRenderer {
-    debug_enabled: bool,
+pub struct SVGRenderer<'g> {
+    // for debug
+    pub edge_route_graph: Option<&'g RouteGraph>,
 }
 
-impl SVGRenderer {
+impl SVGRenderer<'_> {
     pub fn new() -> Self {
         Self {
-            debug_enabled: false,
+            edge_route_graph: None,
         }
-    }
-
-    pub fn debug_enabled(&self) -> bool {
-        self.debug_enabled
-    }
-
-    pub fn enabled_debug(&mut self, enabled: bool) {
-        self.debug_enabled = enabled;
     }
 }
 
-impl Renderer for SVGRenderer {
+impl Renderer for SVGRenderer<'_> {
     fn render(&self, doc: &mir::Document, writer: &mut impl Write) -> Result<(), BackendError> {
         let px = 12f32;
         let border_radius = 6f32;
@@ -196,10 +190,10 @@ impl Renderer for SVGRenderer {
         }
 
         // -- Draw debug info
-        if self.debug_enabled() {
+        if let Some(edge_route_graph) = self.edge_route_graph {
             let circle_radius = 4.0;
 
-            for junction in doc.edge_route_graph().nodes() {
+            for junction in edge_route_graph.nodes() {
                 let circle = element::Circle::new()
                     .set("cx", junction.point().x)
                     .set("cy", junction.point().y)
@@ -234,7 +228,7 @@ impl SVGAnchor {
     }
 }
 
-impl SVGRenderer {
+impl SVGRenderer<'_> {
     fn draw_text(
         &self,
         span: &mir::TextSpan,

@@ -21,8 +21,7 @@ mod tests {
     fn empty_doc() {
         let diagram = Module::new(None);
         let mut doc = diagram.into_mir();
-
-        let engine = SimpleLayoutEngine::new();
+        let mut engine = SimpleLayoutEngine::new();
 
         engine.place_nodes(&mut doc);
 
@@ -104,7 +103,7 @@ mod tests {
         ));
 
         let mut doc = diagram.into_mir();
-        let engine = SimpleLayoutEngine::new();
+        let mut engine = SimpleLayoutEngine::new();
 
         engine.place_nodes(&mut doc);
         engine.place_connection_points(&mut doc);
