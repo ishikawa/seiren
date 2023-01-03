@@ -200,6 +200,10 @@ impl Rect {
     ///                     y_max
     /// ```
     pub fn intersects_line(&self, a: &Point, b: &Point) -> bool {
+        self.intersected_line(a, b).is_some()
+    }
+
+    pub fn intersected_line(&self, a: &Point, b: &Point) -> Option<(Point, Point)> {
         let (x, y, dx, dy) = if b.x < a.x {
             (b.x, b.y, a.x - b.x, a.y - b.y)
         } else {
@@ -213,7 +217,7 @@ impl Rect {
 
         if x > left && (x + dx) < right && y > top && (y + dy) < bottom {
             // Line is entirely inside the rectangle.
-            return false;
+            return None;
         }
 
         let p1 = -dx;
@@ -232,7 +236,7 @@ impl Rect {
             || (p4 == 0.0 && q4 < 0.0)
         {
             // Line is parallel to rectangle.
-            return false;
+            return None;
         }
 
         let mut posarr: SmallVec<[f32; 3]> = smallvec![1.0];
@@ -271,18 +275,16 @@ impl Rect {
 
         if rn1 > rn2 {
             // Line is outside the rectangle.
-            return false;
+            return None;
         }
 
-        /*
         // computing collision points
         let xn1 = x + p2 * rn1;
         let yn1 = y + p4 * rn1;
         let xn2 = x + p2 * rn2;
         let yn2 = y + p4 * rn2;
-        */
 
-        return true;
+        return Some((Point::new(xn1, yn1), Point::new(xn2, yn2)));
     }
 }
 
@@ -544,7 +546,6 @@ mod tests {
         //     !       v   v
         //     v
         // ```
-        // FIXME: should pass
         assert!(r.intersects_line(&Point::new(15.0, 35.0), &Point::new(15.0, 50.0)));
         assert!(r.intersects_line(&Point::new(20.0, 35.0), &Point::new(20.0, 50.0)));
 
@@ -652,7 +653,7 @@ mod tests {
         //     !       |                |
         //     !       |                |
         //     !       |                |
-        //     !       *---*------------*
+        //     !       o---o------------*
         //     !       ^   ^         (45, 35)
         //     !       |   |
         //     !       *   *
@@ -673,7 +674,7 @@ mod tests {
         //     !       |                |
         //     !       |                |
         //     !       |                |
-        //     !       *----------------*
+        //     !       o----------------*
         //     !        ^              (45, 35)
         //     !         \
         //     !          *
@@ -739,6 +740,7 @@ mod tests {
         assert!(r.intersects_line(&Point::new(15.0, 5.0), &Point::new(15.0, 35.0)));
         assert!(r.intersects_line(&Point::new(15.0, 35.0), &Point::new(15.0, 5.0)));
 
+        // ```svgbob
         //   (0, 0)
         //     *- - - - - - -^ - - - - - - - ->
         //     !    (15, 5)
@@ -752,7 +754,130 @@ mod tests {
         //     !       |      v|
         //     !       *-------o
         //     v            (45, 35)
+        // ```
         assert!(r.intersects_line(&Point::new(15.0, 5.0), &Point::new(45.0, 35.0)));
         assert!(r.intersects_line(&Point::new(45.0, 35.0), &Point::new(15.0, 5.0)));
+    }
+
+    #[test]
+    fn rect_intersected_line() {
+        let r = Rect::new(Point::new(15.0, 5.0), Size::new(30.0, 30.0));
+
+        // ```svgbob
+        //   (0, 0)
+        //     *- - - - - - - - - - - - - - ->
+        //     !    (15, 5)
+        //     !       *----------------*
+        //     !       |                |
+        //     !       |                |
+        //     !       |                |
+        //     !       |                |
+        //     !       |                |
+        //     !       |                |
+        //     !       |                |
+        //     !       o----------------*
+        //     !        ^              (45, 35)
+        //     !         \
+        //     !          *
+        //     v
+        // ```
+        let intersected = r.intersected_line(&Point::new(20.0, 50.0), &Point::new(15.0, 35.0));
+
+        assert!(intersected.is_some());
+        assert_eq!(
+            intersected.unwrap(),
+            (Point::new(15.0, 35.0), Point::new(15.0, 35.0))
+        );
+
+        // ```svgbob
+        //   (0, 0)
+        //     *- - - - - - - - - - - - - - ->
+        //     !    (15, 5)
+        //     !   *   *----------------*
+        //     !    \  |                |
+        //     !     \ |                |
+        //     !      \|                |
+        //     !       \                |
+        //     !       |\               |
+        //     !       | v              |
+        //     !       *----------------*
+        //     v                     (45, 35)
+        // ```
+        let intersected = r.intersected_line(&Point::new(10.0, 5.0), &Point::new(20.0, 30.0));
+
+        assert!(intersected.is_some());
+        assert_eq!(
+            intersected.unwrap(),
+            (Point::new(15.0, 17.5), Point::new(20.0, 30.0))
+        );
+
+        // ```svgbob
+        //   (0, 0)
+        //     *- - - - - - -^ - - - - - - - ->
+        //     !    (15, 5)
+        //     !       *----------------*
+        //     !       |                |
+        //     !       |                |
+        //     !       |                |
+        //     !       o--------------->o
+        //     !       |                |
+        //     !       |                |
+        //     !       |                |
+        //     !       *----------------*
+        //     v                     (45, 35)
+        // ```
+        let intersected = r.intersected_line(&Point::new(15.0, 20.0), &Point::new(45.0, 20.0));
+
+        assert!(intersected.is_some());
+        assert_eq!(
+            intersected.unwrap(),
+            (Point::new(15.0, 20.0), Point::new(45.0, 20.0))
+        );
+
+        // ```svgbob
+        //   (0, 0)
+        //     *- - - - - - -^ - - - - - - - ->
+        //     !    (15, 5)
+        //     !       o----------------*
+        //     !       |                |
+        //     !       |                |
+        //     !       |                |
+        //     !       |                |
+        //     !       |                |
+        //     !       |                |
+        //     !       v                |
+        //     !       o----------------*
+        //     v                     (45, 35)
+        // ```
+        let intersected = r.intersected_line(&Point::new(15.0, 5.0), &Point::new(15.0, 35.0));
+
+        assert!(intersected.is_some());
+        assert_eq!(
+            intersected.unwrap(),
+            (Point::new(15.0, 5.0), Point::new(15.0, 35.0))
+        );
+
+        // ```svgbob
+        //   (0, 0)
+        //     *- - - - - - -^ - - - - - - - ->
+        //     !    (15, 5)
+        //     !       o-------*
+        //     !       |\      |
+        //     !       | \     |
+        //     !       |  \    |
+        //     !       |   \   |
+        //     !       |    \  |
+        //     !       |     \ |
+        //     !       |      v|
+        //     !       *-------o
+        //     v            (45, 35)
+        // ```
+        let intersected = r.intersected_line(&Point::new(15.0, 5.0), &Point::new(45.0, 35.0));
+
+        assert!(intersected.is_some());
+        assert_eq!(
+            intersected.unwrap(),
+            (Point::new(15.0, 5.0), Point::new(45.0, 35.0))
+        );
     }
 }

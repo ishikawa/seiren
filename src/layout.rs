@@ -601,8 +601,15 @@ impl SimpleLayoutEngine {
     }
 
     /// Connects the nearest nodes in the vertical and horizontal directions.
-    fn connect_nearest_neighbor_edge_junctions(&mut self, _: &mir::Document) {
+    fn connect_nearest_neighbor_edge_junctions(&mut self, doc: &mir::Document) {
         let mut edges: Vec<(RouteNodeId, RouteNodeId)> = Vec::new();
+
+        let shape_rects = doc
+            .body()
+            .children()
+            .filter_map(|x| doc.get_node(&x))
+            .filter_map(|x| x.rect())
+            .collect::<Vec<_>>();
 
         for n in self.edge_route_graph.nodes() {
             let mut left: Option<&RouteNode> = None;
@@ -632,10 +639,21 @@ impl SimpleLayoutEngine {
                 }
             }
 
-            for node in [left, right, up, down] {
-                if let Some(node) = node {
-                    edges.push((n.id(), node.id()));
+            'OUTER: for dest in [left, right, up, down] {
+                let Some(dest) = dest else { continue } ;
+
+                for r in shape_rects.iter() {
+                    if let Some((p, q)) = r.intersected_line(n.point(), dest.point()) {
+                        // Is a connection point?
+                        if p == q && (p == *n.point() || p == *dest.point()) {
+                            break;
+                        } else {
+                            continue 'OUTER;
+                        }
+                    }
                 }
+
+                edges.push((n.id(), dest.id()));
             }
         }
 
