@@ -1,5 +1,5 @@
 //! Layout engine
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 
 use crate::{
     geometry::{Path, Point, Size},
