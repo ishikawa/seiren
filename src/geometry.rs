@@ -1,60 +1,4 @@
-/*
-use std::fmt;
-
-/// https://developer.mozilla.org/en-US/docs/Web/SVG/Content_type#length
-///
-/// length used in SVG:
-/// ```ignore
-/// length ::= number ("em" | "ex" | "px" | "in" | "cm" | "mm" | "pt" | "pc" | "%")?
-/// ```
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
-pub struct Length {
-    pub value: f32,
-    pub unit: Option<LengthUnit>,
-}
-
-impl Length {
-    pub fn new(value: f32, unit: Option<LengthUnit>) -> Self {
-        Self { value, unit }
-    }
-
-    pub fn add(&self, value: f32) -> Self {
-        Self {
-            value: self.value + value,
-            unit: self.unit,
-        }
-    }
-}
-
-impl From<i32> for Length {
-    fn from(value: i32) -> Self {
-        Self::new(value as f32, None)
-    }
-}
-
-impl fmt::Display for Length {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:.1}", self.value)?;
-        let Some(unit) = self.unit else { return Ok(()) };
-        write!(f, "{}", unit)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum LengthUnit {
-    Pixel,
-    Percentage,
-}
-
-impl fmt::Display for LengthUnit {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            LengthUnit::Pixel => write!(f, "px"),
-            LengthUnit::Percentage => write!(f, "%"),
-        }
-    }
-}
-*/
+use smallvec::{smallvec, SmallVec};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Point {
@@ -228,8 +172,16 @@ impl Rect {
         point.x >= min_x && point.x <= max_x && point.y >= min_y && point.y <= max_y
     }
 
-    /// The Liang-Barsky algorithm
-    /// https://gist.github.com/ChickenProp/3194723
+    /// Returns `true` if a line `a` to `b` intersects the rectangle.
+    ///
+    /// Implementation details
+    /// ----------------------
+    ///
+    /// The Liang–Barsky algorithm
+    /// https://en.wikipedia.org/wiki/Liang–Barsky_algorithm
+    ///
+    /// > This algorithm is significantly more efficient than Cohen–Sutherland.
+    /// > https://en.wikipedia.org/wiki/Cohen–Sutherland_algorithm
     ///
     /// ```svgbob
     ///                ^(x_0 + Δ_x, y_0 + Δ_y)
@@ -248,45 +200,89 @@ impl Rect {
     ///                     y_max
     /// ```
     pub fn intersects_line(&self, a: &Point, b: &Point) -> bool {
-        let (x, y, vx, vy) = if b.x < a.x {
+        let (x, y, dx, dy) = if b.x < a.x {
             (b.x, b.y, a.x - b.x, a.y - b.y)
         } else {
             (a.x, a.y, b.x - a.x, b.y - a.y)
         };
+
         let left = self.min_x();
         let right = self.max_x();
         let top = self.min_y();
         let bottom = self.max_y();
 
-        let p = [-vx, vx, -vy, vy];
-        let q = [x - left, right - x, y - top, bottom - y];
-
-        let mut u1 = f32::NEG_INFINITY;
-        let mut u2 = f32::INFINITY;
-
-        for i in 0..4 {
-            if p[i] == 0.0 {
-                if q[i] < 0.0 {
-                    return false;
-                }
-            } else {
-                let t = q[i] / p[i];
-                if p[i] < 0.0 && u1 < t {
-                    u1 = t
-                } else if p[i] > 0.0 && u2 > t {
-                    u2 = t
-                }
-            }
-        }
-
-        if u1 > u2 || u1 > 1.0 || u1 < 0.0 {
+        if x > left && (x + dx) < right && y > top && (y + dy) < bottom {
+            // Line is entirely inside the rectangle.
             return false;
         }
 
-        // collision.x = x + u1 * vx;
-        // collision.y = y + u1 * vy;
+        let p1 = -dx;
+        let p2 = -p1;
+        let p3 = -dy;
+        let p4 = -p3;
 
-        true
+        let q1 = x - left;
+        let q2 = right - x;
+        let q3 = y - top;
+        let q4 = bottom - y;
+
+        if (p1 == 0.0 && q1 < 0.0)
+            || (p2 == 0.0 && q2 < 0.0)
+            || (p3 == 0.0 && q3 < 0.0)
+            || (p4 == 0.0 && q4 < 0.0)
+        {
+            // Line is parallel to rectangle.
+            return false;
+        }
+
+        let mut posarr: SmallVec<[f32; 3]> = smallvec![1.0];
+        let mut negarr: SmallVec<[f32; 3]> = smallvec![0.0];
+
+        posarr.push(1.0);
+        negarr.push(0.0);
+
+        if p1 != 0.0 {
+            let r1 = q1 / p1;
+            let r2 = q2 / p2;
+
+            if p1 < 0.0 {
+                negarr.push(r1); // for negative p1, add it to negative array
+                posarr.push(r2); // and add p2 to positive array
+            } else {
+                negarr.push(r2);
+                posarr.push(r1);
+            }
+        }
+
+        if p3 != 0.0 {
+            let r3 = q3 / p3;
+            let r4 = q4 / p4;
+            if p3 < 0.0 {
+                negarr.push(r3);
+                posarr.push(r4);
+            } else {
+                negarr.push(r4);
+                posarr.push(r3);
+            }
+        }
+
+        let rn1 = negarr.iter().fold(f32::NAN, |m, v| v.max(m));
+        let rn2 = posarr.iter().fold(f32::NAN, |m, v| v.min(m));
+
+        if rn1 > rn2 {
+            // Line is outside the rectangle.
+            return false;
+        }
+
+        /*
+        // computing collision points
+        let xn1 = x + p2 * rn1;
+        let yn1 = y + p4 * rn1;
+        let xn2 = x + p2 * rn2;
+        let yn2 = y + p4 * rn2;
+        */
+
+        return true;
     }
 }
 
