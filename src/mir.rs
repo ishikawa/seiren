@@ -11,7 +11,7 @@
 //! | (0, 100)
 //! ```
 use crate::color::WebColor;
-use crate::geometry::{Path, Point, Rect, Size};
+use crate::geometry::{Direction, Path, Point, Rect, Size};
 use derive_builder::Builder;
 use derive_more::Display;
 
@@ -27,7 +27,7 @@ pub struct Node {
     pub size: Option<Size>,
 
     /// Points to which edges can be connected.
-    connection_points: Vec<Point>,
+    connection_points: Vec<ConnectionPoint>,
     kind: NodeKind,
     children: Vec<NodeId>,
 }
@@ -65,11 +65,11 @@ impl Node {
     }
 
     // --- Connection points
-    pub fn connection_points(&self) -> impl ExactSizeIterator<Item = &Point> {
+    pub fn connection_points(&self) -> impl ExactSizeIterator<Item = &ConnectionPoint> {
         self.connection_points.iter()
     }
 
-    pub fn append_connection_point(&mut self, connection_point: Point) {
+    pub fn append_connection_point(&mut self, connection_point: ConnectionPoint) {
         self.connection_points.push(connection_point);
     }
 }
@@ -81,10 +81,34 @@ pub enum NodeKind {
     Field(FieldNode),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConnectionPoint {
     location: Point,
+
+    /// Indicates the direction in which the connection point can be connected
+    direction: Direction,
 }
+
+impl ConnectionPoint {
+    pub fn new(location: Point, direction: Direction) -> Self {
+        Self {
+            location,
+            direction,
+        }
+    }
+
+    pub fn location(&self) -> &Point {
+        &self.location
+    }
+
+    pub fn direction(&self) -> Direction {
+        self.direction
+    }
+}
+
+/// 接続ポイントに接続できる方向を表す
+#[derive(Debug)]
+pub enum ConnectionPointDirection {}
 
 #[derive(Debug)]
 pub struct Document {

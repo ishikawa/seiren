@@ -1,4 +1,13 @@
+use derive_more::Display;
 use smallvec::{smallvec, SmallVec};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
+pub enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Point {

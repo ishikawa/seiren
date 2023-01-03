@@ -2,8 +2,8 @@
 use derive_more::Display;
 
 use crate::{
-    geometry::{Path, Point, Size},
-    mir::{self, NodeKind},
+    geometry::{Direction, Path, Point, Size},
+    mir::{self, ConnectionPoint, NodeKind},
 };
 use std::collections::{HashMap, VecDeque};
 
@@ -188,13 +188,13 @@ impl LayoutEngine for SimpleLayoutEngine {
 
             // In the case of a rectangle, connection points are placed in
             // the center of each of the four edges.
-            for pt in [
-                Point::new(record_rect.mid_x(), record_rect.min_y()), // top
-                Point::new(record_rect.max_x(), record_rect.mid_y()), // right
-                Point::new(record_rect.mid_x(), record_rect.max_y()), // bottom
-                Point::new(record_rect.min_x(), record_rect.mid_y()), // left
+            for (x, y, d) in [
+                (record_rect.mid_x(), record_rect.min_y(), Direction::Up),
+                (record_rect.max_x(), record_rect.mid_y(), Direction::Right),
+                (record_rect.mid_x(), record_rect.max_y(), Direction::Down),
+                (record_rect.min_x(), record_rect.mid_y(), Direction::Left),
             ] {
-                record_node.append_connection_point(pt);
+                record_node.append_connection_point(ConnectionPoint::new(Point::new(x, y), d));
             }
 
             // For each field in a rectangle, connection points are placed
@@ -210,36 +210,40 @@ impl LayoutEngine for SimpleLayoutEngine {
                 let Some(field_rect) = field_node.rect() else { continue };
 
                 if field_id_vec.len() == 1 {
-                    for pt in [
-                        Point::new(field_rect.mid_x(), field_rect.min_y()), // top
-                        Point::new(field_rect.max_x(), field_rect.mid_y()), // right
-                        Point::new(field_rect.mid_x(), field_rect.max_y()), // bottom
-                        Point::new(field_rect.min_x(), field_rect.mid_y()), // left
+                    for (x, y, d) in [
+                        (field_rect.mid_x(), field_rect.min_y(), Direction::Up),
+                        (field_rect.max_x(), field_rect.mid_y(), Direction::Right),
+                        (field_rect.mid_x(), field_rect.max_y(), Direction::Down),
+                        (field_rect.min_x(), field_rect.mid_y(), Direction::Left),
                     ] {
-                        field_node.append_connection_point(pt);
+                        field_node
+                            .append_connection_point(ConnectionPoint::new(Point::new(x, y), d));
                     }
                 } else if field_index == 0 {
-                    for pt in [
-                        Point::new(field_rect.mid_x(), field_rect.min_y()), // top
-                        Point::new(field_rect.max_x(), field_rect.mid_y()), // right
-                        Point::new(field_rect.min_x(), field_rect.mid_y()), // left
+                    for (x, y, d) in [
+                        (field_rect.mid_x(), field_rect.min_y(), Direction::Up),
+                        (field_rect.max_x(), field_rect.mid_y(), Direction::Right),
+                        (field_rect.min_x(), field_rect.mid_y(), Direction::Left),
                     ] {
-                        field_node.append_connection_point(pt);
+                        field_node
+                            .append_connection_point(ConnectionPoint::new(Point::new(x, y), d));
                     }
                 } else if field_index == (field_id_vec.len() - 1) {
-                    for pt in [
-                        Point::new(field_rect.max_x(), field_rect.mid_y()), // right
-                        Point::new(field_rect.mid_x(), field_rect.max_y()), // bottom
-                        Point::new(field_rect.min_x(), field_rect.mid_y()), // left
+                    for (x, y, d) in [
+                        (field_rect.max_x(), field_rect.mid_y(), Direction::Right),
+                        (field_rect.mid_x(), field_rect.max_y(), Direction::Down),
+                        (field_rect.min_x(), field_rect.mid_y(), Direction::Left),
                     ] {
-                        field_node.append_connection_point(pt);
+                        field_node
+                            .append_connection_point(ConnectionPoint::new(Point::new(x, y), d));
                     }
                 } else {
-                    for pt in [
-                        Point::new(field_rect.max_x(), field_rect.mid_y()), // right
-                        Point::new(field_rect.min_x(), field_rect.mid_y()), // left
+                    for (x, y, d) in [
+                        (field_rect.max_x(), field_rect.mid_y(), Direction::Right),
+                        (field_rect.min_x(), field_rect.mid_y(), Direction::Left),
                     ] {
-                        field_node.append_connection_point(pt);
+                        field_node
+                            .append_connection_point(ConnectionPoint::new(Point::new(x, y), d));
                     }
                 }
             }
@@ -272,26 +276,30 @@ impl LayoutEngine for SimpleLayoutEngine {
 
             // Give the combination with the maximum distance as the initial value, and choose
             // the combination with the shortest distance between two connection points.
-            let mut connection_points: (
-                Point, // start point
-                Point, // end point
-                f32,   // distance
-            ) = (Point::default(), Point::default(), f32::MAX);
+            let mut connection: (
+                ConnectionPoint, // start point
+                ConnectionPoint, // end point
+                f32,             // distance
+            ) = (
+                ConnectionPoint::new(Point::default(), Direction::Left),
+                ConnectionPoint::new(Point::default(), Direction::Left),
+                f32::MAX,
+            );
 
             for pt1 in start_node.connection_points() {
                 for pt2 in end_node.connection_points() {
-                    let d = pt1.distance(pt2);
-                    if d < connection_points.2 {
-                        connection_points = (pt1.clone(), pt2.clone(), d);
+                    let d = pt1.location().distance(pt2.location());
+                    if d < connection.2 {
+                        connection = (pt1.clone(), pt2.clone(), d);
                     }
                 }
             }
 
             // Build a path.
-            let start_cx = connection_points.0.x;
-            let end_cx = connection_points.1.x;
-            let start_cy = connection_points.0.y;
-            let end_cy = connection_points.1.y;
+            let start_cx = connection.0.location().x;
+            let end_cx = connection.1.location().x;
+            let start_cy = connection.0.location().y;
+            let end_cy = connection.1.location().y;
 
             let mid_x = start_cx.min(end_cx) + (start_cx - end_cx).abs() / 2.0;
 
@@ -321,7 +329,7 @@ impl LayoutEngine for SimpleLayoutEngine {
             // !        |           `--*--------o (E)
             // v        |                       |
             // ```
-            let mut path = Path::new(connection_points.0);
+            let mut path = Path::new(*connection.0.location());
 
             // (A)
             path.line_to(Point::new(ctrl1_x, start_cy));
@@ -393,21 +401,21 @@ impl LayoutEngine for SimpleLayoutEngine {
             let Some(start_node) = doc.get_node(&edge.start_node_id) else { continue };
             let Some(end_node) = doc.get_node(&edge.end_node_id) else { continue };
 
-            for c in start_node.connection_points() {
+            for pt in start_node.connection_points() {
                 let junctions = self.edge_junction_nodes_from_connection_point(
                     &doc,
                     start_node,
-                    c,
+                    pt,
                     &shape_junctions,
                 );
 
                 crossing_junctions.extend(junctions);
             }
-            for c in end_node.connection_points() {
+            for pt in end_node.connection_points() {
                 let junctions = self.edge_junction_nodes_from_connection_point(
                     &doc,
                     end_node,
-                    c,
+                    pt,
                     &shape_junctions,
                 );
 
@@ -425,11 +433,11 @@ impl LayoutEngine for SimpleLayoutEngine {
             let Some(start_node) = doc.get_node(&edge.start_node_id) else { continue };
             let Some(end_node) = doc.get_node(&edge.end_node_id) else { continue };
 
-            for c in start_node.connection_points() {
-                edge_junctions.push(*c);
+            for pt in start_node.connection_points() {
+                edge_junctions.push(*pt.location());
             }
-            for c in end_node.connection_points() {
-                edge_junctions.push(*c);
+            for pt in end_node.connection_points() {
+                edge_junctions.push(*pt.location());
             }
         }
 
@@ -474,14 +482,12 @@ impl SimpleLayoutEngine {
     fn edge_junction_nodes_from_connection_point(
         &self,
         doc: &mir::Document,
-        node: &mir::Node,
-        connection_point: &Point,
+        _: &mir::Node,
+        connection_point: &ConnectionPoint,
         other_junctions: &[Point],
     ) -> Vec<Point> {
         let margin = Self::SHAPE_JUNCTION_MARGIN;
         let mut junctions = vec![];
-        let Some(rect) = node.rect() else { return junctions };
-        let center = rect.center();
 
         let shape_rects = doc
             .body()
@@ -491,75 +497,74 @@ impl SimpleLayoutEngine {
             .map(|r| r.inset_by(-margin, -margin))
             .collect::<Vec<_>>();
 
-        if connection_point.x < center.x {
-            // Horizontally leftward
-            let mut min_x = 0.0f32;
-            let line_end = Point::new(f32::MIN, connection_point.y);
+        let conn_pt = connection_point.location();
 
-            for r in shape_rects {
-                if r.max_x() < connection_point.x && r.intersects_line(&connection_point, &line_end)
-                {
-                    min_x = min_x.max(r.max_x());
+        match connection_point.direction() {
+            Direction::Left => {
+                let mut min_x = 0.0f32;
+                let line_end = Point::new(f32::MIN, conn_pt.y);
+
+                for r in shape_rects {
+                    if r.max_x() < conn_pt.x && r.intersects_line(conn_pt, &line_end) {
+                        min_x = min_x.max(r.max_x());
+                    }
+                }
+
+                for j in other_junctions {
+                    if j.x <= conn_pt.x && j.x >= min_x {
+                        junctions.push(Point::new(j.x, conn_pt.y));
+                    }
                 }
             }
+            Direction::Right => {
+                let mut max_x = f32::MAX;
+                let line_end = Point::new(f32::MAX, conn_pt.y);
 
-            for j in other_junctions {
-                if j.x <= connection_point.x && j.x >= min_x {
-                    junctions.push(Point::new(j.x, connection_point.y));
+                for r in shape_rects {
+                    if r.min_x() > conn_pt.x && r.intersects_line(conn_pt, &line_end) {
+                        max_x = max_x.min(r.min_x());
+                    }
+                }
+
+                for j in other_junctions {
+                    if j.x >= conn_pt.x && j.x <= max_x {
+                        junctions.push(Point::new(j.x, conn_pt.y));
+                    }
                 }
             }
-        } else if connection_point.x > center.x {
-            // Horizontally rightward
-            let mut max_x = f32::MAX;
-            let line_end = Point::new(f32::MAX, connection_point.y);
+            Direction::Up => {
+                let mut max_y = f32::MAX;
+                let line_end = Point::new(conn_pt.x, f32::MAX);
 
-            for r in shape_rects {
-                if r.min_x() > connection_point.x && r.intersects_line(&connection_point, &line_end)
-                {
-                    max_x = max_x.min(r.min_x());
+                for r in shape_rects {
+                    if r.min_y() > conn_pt.y && r.intersects_line(conn_pt, &line_end) {
+                        max_y = max_y.min(r.min_y());
+                    }
+                }
+
+                for j in other_junctions {
+                    if j.y <= conn_pt.y && j.y <= max_y {
+                        junctions.push(Point::new(conn_pt.x, j.y));
+                    }
                 }
             }
+            Direction::Down => {
+                let mut min_y = 0.0f32;
+                let line_end = Point::new(conn_pt.x, f32::MIN);
 
-            for j in other_junctions {
-                if j.x >= connection_point.x && j.x <= max_x {
-                    junctions.push(Point::new(j.x, connection_point.y));
+                for r in shape_rects {
+                    if r.max_y() < conn_pt.y && r.intersects_line(conn_pt, &line_end) {
+                        min_y = min_y.max(r.max_y());
+                    }
+                }
+
+                for j in other_junctions {
+                    if j.y >= conn_pt.y && j.y >= min_y {
+                        junctions.push(Point::new(conn_pt.x, j.y));
+                    }
                 }
             }
-        } else if connection_point.y < center.y {
-            // Vertically downward
-            let mut max_y = f32::MAX;
-            let line_end = Point::new(connection_point.x, f32::MAX);
-
-            for r in shape_rects {
-                if r.min_y() > connection_point.y && r.intersects_line(&connection_point, &line_end)
-                {
-                    max_y = max_y.min(r.min_y());
-                }
-            }
-
-            for j in other_junctions {
-                if j.y <= connection_point.y && j.y <= max_y {
-                    junctions.push(Point::new(connection_point.x, j.y));
-                }
-            }
-        } else if connection_point.y > center.y {
-            // Vertically upward
-            let mut min_y = 0.0f32;
-            let line_end = Point::new(connection_point.x, f32::MIN);
-
-            for r in shape_rects {
-                if r.max_y() < connection_point.y && r.intersects_line(&connection_point, &line_end)
-                {
-                    min_y = min_y.max(r.max_y());
-                }
-            }
-
-            for j in other_junctions {
-                if j.y >= connection_point.y && j.y >= min_y {
-                    junctions.push(Point::new(connection_point.x, j.y));
-                }
-            }
-        }
+        };
 
         junctions
     }
