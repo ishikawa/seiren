@@ -478,6 +478,7 @@ impl SimpleLayoutEngine {
         connection_point: &Point,
         other_junctions: &[Point],
     ) -> Vec<Point> {
+        let margin = Self::SHAPE_JUNCTION_MARGIN;
         let mut junctions = vec![];
         let Some(rect) = node.rect() else { return junctions };
         let center = rect.center();
@@ -487,6 +488,7 @@ impl SimpleLayoutEngine {
             .children()
             .filter_map(|x| doc.get_node(&x))
             .filter_map(|x| x.rect())
+            .map(|r| r.inset_by(-margin, -margin))
             .collect::<Vec<_>>();
 
         if connection_point.x < center.x {
