@@ -198,10 +198,10 @@ impl Renderer for SVGRenderer<'_> {
                         let Some(dest) = edge_route_graph.get_node(edge.dest()) else { continue };
 
                         let line = element::Line::new()
-                            .set("x1", junction.point().x)
-                            .set("y1", junction.point().y)
-                            .set("x2", dest.point().x)
-                            .set("y2", dest.point().y)
+                            .set("x1", junction.location().x)
+                            .set("y1", junction.location().y)
+                            .set("x2", dest.location().x)
+                            .set("y2", dest.location().y)
                             .set("stroke", "red")
                             .set("stroke-width", 1);
 
@@ -215,8 +215,8 @@ impl Renderer for SVGRenderer<'_> {
 
             for junction in edge_route_graph.nodes() {
                 let circle = element::Circle::new()
-                    .set("cx", junction.point().x)
-                    .set("cy", junction.point().y)
+                    .set("cx", junction.location().x)
+                    .set("cy", junction.location().y)
                     .set("r", circle_radius)
                     .set("stroke", "white")
                     .set("stroke-width", 1)

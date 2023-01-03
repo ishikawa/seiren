@@ -82,6 +82,11 @@ pub enum NodeKind {
 }
 
 #[derive(Debug)]
+pub struct ConnectionPoint {
+    location: Point,
+}
+
+#[derive(Debug)]
 pub struct Document {
     nodes: Vec<Node>,
     edges: Vec<Edge>,

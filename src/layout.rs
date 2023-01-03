@@ -86,20 +86,20 @@ pub struct RouteNodeId(usize);
 #[derive(Debug, Clone)]
 pub struct RouteNode {
     id: RouteNodeId,
-    point: Point,
+    location: Point,
 }
 
 impl RouteNode {
-    pub fn new(id: RouteNodeId, point: Point) -> Self {
-        Self { id, point }
+    pub fn new(id: RouteNodeId, location: Point) -> Self {
+        Self { id, location }
     }
 
     pub fn id(&self) -> RouteNodeId {
         self.id
     }
 
-    pub fn point(&self) -> &Point {
-        &self.point
+    pub fn location(&self) -> &Point {
+        &self.location
     }
 }
 
@@ -618,22 +618,22 @@ impl SimpleLayoutEngine {
             let mut down: Option<&RouteNode> = None;
 
             for m in self.edge_route_graph.nodes() {
-                let p = n.point();
-                let q = m.point();
+                let p = n.location();
+                let q = m.location();
 
                 // the vertical direction
                 if q.x == p.x {
-                    if q.y < p.y && up.filter(|u| u.point().y > q.y).is_none() {
+                    if q.y < p.y && up.filter(|u| u.location().y > q.y).is_none() {
                         up.replace(m);
-                    } else if q.y > p.y && down.filter(|d| d.point().y < q.y).is_none() {
+                    } else if q.y > p.y && down.filter(|d| d.location().y < q.y).is_none() {
                         down.replace(m);
                     }
                 }
                 // the horizontal direction
                 else if q.y == p.y {
-                    if q.x < p.x && left.filter(|l| l.point().x > q.x).is_none() {
+                    if q.x < p.x && left.filter(|l| l.location().x > q.x).is_none() {
                         left.replace(m);
-                    } else if q.x > p.x && right.filter(|r| r.point().x < q.x).is_none() {
+                    } else if q.x > p.x && right.filter(|r| r.location().x < q.x).is_none() {
                         right.replace(m);
                     }
                 }
@@ -643,9 +643,9 @@ impl SimpleLayoutEngine {
                 let Some(dest) = dest else { continue } ;
 
                 for r in shape_rects.iter() {
-                    if let Some((p, q)) = r.intersected_line(n.point(), dest.point()) {
+                    if let Some((p, q)) = r.intersected_line(n.location(), dest.location()) {
                         // Is a connection point?
-                        if p == q && (p == *n.point() || p == *dest.point()) {
+                        if p == q && (p == *n.location() || p == *dest.location()) {
                             break;
                         } else {
                             continue 'OUTER;
