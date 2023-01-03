@@ -12,6 +12,7 @@
 //! ```
 use crate::color::WebColor;
 use crate::geometry::{Path, Point, Rect, Size};
+use crate::layout::RouteGraph;
 use derive_builder::Builder;
 use derive_more::Display;
 
@@ -87,7 +88,7 @@ pub struct Document {
     edges: Vec<Edge>,
 
     // for debug
-    edge_junctions: Vec<Point>,
+    edge_route_graph: RouteGraph,
 }
 
 impl Document {
@@ -98,7 +99,7 @@ impl Document {
         Self {
             nodes: vec![node],
             edges: vec![],
-            edge_junctions: vec![],
+            edge_route_graph: RouteGraph::new(),
         }
     }
 
@@ -155,12 +156,12 @@ impl Document {
     }
 
     // for debug
-    pub fn edge_junctions(&self) -> impl ExactSizeIterator<Item = &Point> {
-        self.edge_junctions.iter()
+    pub(crate) fn edge_route_graph(&self) -> &RouteGraph {
+        &self.edge_route_graph
     }
 
-    pub fn append_edge_junction(&mut self, point: Point) {
-        self.edge_junctions.push(point);
+    pub(crate) fn edge_route_graph_mut(&mut self) -> &mut RouteGraph {
+        &mut self.edge_route_graph
     }
 }
 

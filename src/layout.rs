@@ -1,5 +1,5 @@
 //! Layout engine
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 use crate::{
     geometry::{Path, Point, Size},
@@ -23,6 +23,82 @@ pub trait LayoutEngine {
     fn draw_edge_path(&self, doc: &mut mir::Document);
 }
 
+/// Represents routes in a place by graph. Every junction of two edges will be a node of the graph.
+/// Neighboring junctions are connected by edges. Each nodes neighbors four other nodes and each
+/// edge is NOT directed so shared by two junctions.
+#[derive(Debug, Clone)]
+pub(crate) struct RouteGraph {
+    nodes: Vec<RouteNode>,
+    // We use adjacency list as our primary data structure to represent graphs because a graph is
+    // relatively sparse.
+    edges: HashMap<RouteNodeId, Vec<RouteEdge>>,
+}
+
+impl RouteGraph {
+    pub fn new() -> Self {
+        Self {
+            nodes: vec![],
+            edges: HashMap::new(),
+        }
+    }
+
+    pub fn nodes(&self) -> impl ExactSizeIterator<Item = &RouteNode> {
+        self.nodes.iter()
+    }
+
+    pub fn add_node(&mut self, at: Point) -> RouteNodeId {
+        let node_id = RouteNodeId(self.nodes.len());
+        let node = RouteNode::new(node_id, at);
+
+        self.nodes.push(node);
+        node_id
+    }
+
+    pub fn add_edge(&mut self, a: RouteNodeId, b: RouteNodeId) {
+        self.edges
+            .entry(a)
+            .and_modify(|v| v.push(RouteEdge::new(b)))
+            .or_insert(vec![]);
+        self.edges
+            .entry(b)
+            .and_modify(|v| v.push(RouteEdge::new(a)))
+            .or_insert(vec![]);
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct RouteNodeId(usize);
+
+#[derive(Debug, Clone)]
+pub(crate) struct RouteNode {
+    id: RouteNodeId,
+    point: Point,
+}
+
+impl RouteNode {
+    pub fn new(id: RouteNodeId, point: Point) -> Self {
+        Self { id, point }
+    }
+
+    pub fn id(&self) -> RouteNodeId {
+        self.id
+    }
+
+    pub fn point(&self) -> &Point {
+        &self.point
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct RouteEdge {
+    dest: RouteNodeId,
+}
+
+impl RouteEdge {
+    pub fn new(dest: RouteNodeId) -> Self {
+        Self { dest }
+    }
+}
 #[derive(Debug)]
 pub struct SimpleLayoutEngine {}
 
@@ -329,7 +405,7 @@ impl LayoutEngine for SimpleLayoutEngine {
         }
 
         for j in edge_junctions {
-            doc.append_edge_junction(j);
+            doc.edge_route_graph_mut().add_node(j);
         }
     }
 }

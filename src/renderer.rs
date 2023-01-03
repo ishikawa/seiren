@@ -199,10 +199,10 @@ impl Renderer for SVGRenderer {
         if self.debug_enabled() {
             let circle_radius = 4.0;
 
-            for junction in doc.edge_junctions() {
+            for junction in doc.edge_route_graph().nodes() {
                 let circle = element::Circle::new()
-                    .set("cx", junction.x)
-                    .set("cy", junction.y)
+                    .set("cx", junction.point().x)
+                    .set("cy", junction.point().y)
                     .set("r", circle_radius)
                     .set("stroke", "white")
                     .set("stroke-width", 1)
