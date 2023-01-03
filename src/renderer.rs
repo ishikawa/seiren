@@ -191,6 +191,26 @@ impl Renderer for SVGRenderer<'_> {
 
         // -- Draw debug info
         if let Some(edge_route_graph) = self.edge_route_graph {
+            // Draw route edges
+            for junction in edge_route_graph.nodes() {
+                if let Some(edges) = edge_route_graph.edges(&junction.id()) {
+                    for edge in edges {
+                        let Some(dest) = edge_route_graph.get_node(edge.dest()) else { continue };
+
+                        let line = element::Line::new()
+                            .set("x1", junction.point().x)
+                            .set("y1", junction.point().y)
+                            .set("x2", dest.point().x)
+                            .set("y2", dest.point().y)
+                            .set("stroke", "red")
+                            .set("stroke-width", 1);
+
+                        svg_doc = svg_doc.add(line);
+                    }
+                }
+            }
+
+            // Draw junction nodes
             let circle_radius = 4.0;
 
             for junction in edge_route_graph.nodes() {
@@ -201,6 +221,7 @@ impl Renderer for SVGRenderer<'_> {
                     .set("stroke", "white")
                     .set("stroke-width", 1)
                     .set("fill", "red");
+
                 svg_doc = svg_doc.add(circle);
             }
         }

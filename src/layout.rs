@@ -1,10 +1,11 @@
 //! Layout engine
-use std::collections::{HashMap, VecDeque};
+use derive_more::Display;
 
 use crate::{
     geometry::{Path, Point, Size},
     mir::{self, NodeKind},
 };
+use std::collections::{HashMap, VecDeque};
 
 pub trait LayoutEngine {
     /// Place all nodes on 2D coordination.
@@ -46,6 +47,10 @@ impl RouteGraph {
         self.nodes.iter()
     }
 
+    pub fn get_node(&self, id: RouteNodeId) -> Option<&RouteNode> {
+        self.nodes.get(id.0)
+    }
+
     pub fn add_node(&mut self, at: Point) -> RouteNodeId {
         let node_id = RouteNodeId(self.nodes.len());
         let node = RouteNode::new(node_id, at);
@@ -54,19 +59,28 @@ impl RouteGraph {
         node_id
     }
 
+    pub fn edges(
+        &self,
+        node_id: &RouteNodeId,
+    ) -> Option<impl ExactSizeIterator<Item = &RouteEdge>> {
+        self.edges.get(node_id).map(|x| x.iter())
+    }
+
     pub fn add_edge(&mut self, a: RouteNodeId, b: RouteNodeId) {
-        self.edges
-            .entry(a)
-            .and_modify(|v| v.push(RouteEdge::new(b)))
-            .or_insert(vec![]);
-        self.edges
-            .entry(b)
-            .and_modify(|v| v.push(RouteEdge::new(a)))
-            .or_insert(vec![]);
+        for (from, to) in [(a, b), (b, a)] {
+            self.edges
+                .entry(from)
+                .and_modify(|v| {
+                    if !v.iter().any(|e| e.dest == to) {
+                        v.push(RouteEdge::new(to));
+                    }
+                })
+                .or_insert(vec![RouteEdge::new(to)]);
+        }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
 pub struct RouteNodeId(usize);
 
 #[derive(Debug, Clone)]
@@ -98,7 +112,12 @@ impl RouteEdge {
     pub fn new(dest: RouteNodeId) -> Self {
         Self { dest }
     }
+
+    pub fn dest(&self) -> RouteNodeId {
+        self.dest
+    }
 }
+
 #[derive(Debug)]
 pub struct SimpleLayoutEngine {
     // for debug
@@ -417,6 +436,8 @@ impl LayoutEngine for SimpleLayoutEngine {
         for j in edge_junctions {
             self.edge_route_graph.add_node(j);
         }
+
+        self.connect_nearest_neighbor_edge_junctions(doc);
     }
 }
 
@@ -575,5 +596,49 @@ impl SimpleLayoutEngine {
         }
 
         edge_junctions
+    }
+
+    /// Connects the nearest nodes in the vertical and horizontal directions.
+    fn connect_nearest_neighbor_edge_junctions(&mut self, _: &mir::Document) {
+        let mut edges: Vec<(RouteNodeId, RouteNodeId)> = Vec::new();
+
+        for n in self.edge_route_graph.nodes() {
+            let mut left: Option<&RouteNode> = None;
+            let mut right: Option<&RouteNode> = None;
+            let mut up: Option<&RouteNode> = None;
+            let mut down: Option<&RouteNode> = None;
+
+            for m in self.edge_route_graph.nodes() {
+                let p = n.point();
+                let q = m.point();
+
+                // the vertical direction
+                if q.x == p.x {
+                    if q.y < p.y && up.filter(|u| u.point().y > q.y).is_none() {
+                        up.replace(m);
+                    } else if q.y > p.y && down.filter(|d| d.point().y < q.y).is_none() {
+                        down.replace(m);
+                    }
+                }
+                // the horizontal direction
+                else if q.y == p.y {
+                    if q.x < p.x && left.filter(|l| l.point().x > q.x).is_none() {
+                        left.replace(m);
+                    } else if q.x > p.x && right.filter(|r| r.point().x < q.x).is_none() {
+                        right.replace(m);
+                    }
+                }
+            }
+
+            for node in [left, right, up, down] {
+                if let Some(node) = node {
+                    edges.push((n.id(), node.id()));
+                }
+            }
+        }
+
+        for (a, b) in edges {
+            self.edge_route_graph.add_edge(a, b);
+        }
     }
 }

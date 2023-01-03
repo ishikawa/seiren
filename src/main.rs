@@ -115,7 +115,10 @@ fn main() -> Result<(), io::Error> {
         engine.draw_edge_path(&mut doc);
 
         let mut backend = SVGRenderer::new();
-        backend.edge_route_graph = Some(engine.edge_route_graph());
+
+        if DEBUG {
+            backend.edge_route_graph = Some(engine.edge_route_graph());
+        }
 
         let stdout = io::stdout();
         let mut handle = stdout.lock();
