@@ -51,9 +51,20 @@ impl RouteGraph {
         self.nodes.get(id.0)
     }
 
-    pub fn add_node(&mut self, at: Point) -> RouteNodeId {
+    pub fn add_node(&mut self, location: Point) -> RouteNodeId {
+        self._add_node(location, None)
+    }
+
+    pub fn add_connection_point(&mut self, connection_point: &ConnectionPoint) -> RouteNodeId {
+        self._add_node(
+            connection_point.location().clone(),
+            Some(connection_point.direction().clone()),
+        )
+    }
+
+    fn _add_node(&mut self, location: Point, direction: Option<Direction>) -> RouteNodeId {
         let node_id = RouteNodeId(self.nodes.len());
-        let node = RouteNode::new(node_id, at);
+        let node = RouteNode::new(node_id, location, direction);
 
         self.nodes.push(node);
         node_id
@@ -87,11 +98,19 @@ pub struct RouteNodeId(usize);
 pub struct RouteNode {
     id: RouteNodeId,
     location: Point,
+
+    /// If the node is a connection point, copy its `direction` to
+    /// detect edge connectivity.
+    direction: Option<Direction>,
 }
 
 impl RouteNode {
-    pub fn new(id: RouteNodeId, location: Point) -> Self {
-        Self { id, location }
+    pub fn new(id: RouteNodeId, location: Point, direction: Option<Direction>) -> Self {
+        Self {
+            id,
+            location,
+            direction,
+        }
     }
 
     pub fn id(&self) -> RouteNodeId {
@@ -100,6 +119,18 @@ impl RouteNode {
 
     pub fn location(&self) -> &Point {
         &self.location
+    }
+
+    pub fn direction(&self) -> Option<Direction> {
+        self.direction
+    }
+
+    /// Returns `true` if `node.direction` is `None` or `direction`.
+    pub fn is_connectable(&self, direction: Direction) -> bool {
+        match self.direction {
+            None => true,
+            Some(d) => d == direction,
+        }
     }
 }
 
@@ -423,10 +454,15 @@ impl LayoutEngine for SimpleLayoutEngine {
             }
         }
 
-        let mut edge_junctions = self.remove_overlapped_junction_nodes(
+        let edge_junctions = self.remove_overlapped_junction_nodes(
             &doc,
             shape_junctions.iter().chain(crossing_junctions.iter()),
         );
+
+        // --- Move junction points to the graph
+        for j in edge_junctions {
+            self.edge_route_graph.add_node(j);
+        }
 
         // Add start/end connection points.
         for edge in doc.edges() {
@@ -434,15 +470,11 @@ impl LayoutEngine for SimpleLayoutEngine {
             let Some(end_node) = doc.get_node(&edge.end_node_id) else { continue };
 
             for pt in start_node.connection_points() {
-                edge_junctions.push(*pt.location());
+                self.edge_route_graph.add_connection_point(pt);
             }
             for pt in end_node.connection_points() {
-                edge_junctions.push(*pt.location());
+                self.edge_route_graph.add_connection_point(pt);
             }
-        }
-
-        for j in edge_junctions {
-            self.edge_route_graph.add_node(j);
         }
 
         self.connect_nearest_neighbor_edge_junctions(doc);
@@ -585,7 +617,7 @@ impl SimpleLayoutEngine {
             .filter_map(|x| x.rect())
             .map(|r| {
                 r.inset_by(
-                    // Nodes on the edge of shapes must remain. So minus 1.0 from margin.
+                    // Nodes on the edge of fatter shapes must remain. So minus 1.0 from margin.
                     -(Self::SHAPE_JUNCTION_MARGIN - 1.0),
                     -(Self::SHAPE_JUNCTION_MARGIN - 1.0),
                 )
@@ -606,15 +638,8 @@ impl SimpleLayoutEngine {
     }
 
     /// Connects the nearest nodes in the vertical and horizontal directions.
-    fn connect_nearest_neighbor_edge_junctions(&mut self, doc: &mir::Document) {
+    fn connect_nearest_neighbor_edge_junctions(&mut self, _: &mir::Document) {
         let mut edges: Vec<(RouteNodeId, RouteNodeId)> = Vec::new();
-
-        let shape_rects = doc
-            .body()
-            .children()
-            .filter_map(|x| doc.get_node(&x))
-            .filter_map(|x| x.rect())
-            .collect::<Vec<_>>();
 
         for n in self.edge_route_graph.nodes() {
             let mut left: Option<&RouteNode> = None;
@@ -626,38 +651,73 @@ impl SimpleLayoutEngine {
                 let p = n.location();
                 let q = m.location();
 
-                // the vertical direction
-                if q.x == p.x {
-                    if q.y < p.y && up.filter(|u| u.location().y > q.y).is_none() {
-                        up.replace(m);
-                    } else if q.y > p.y && down.filter(|d| d.location().y < q.y).is_none() {
-                        down.replace(m);
+                if q.x == p.x && q.y < p.y {
+                    // vertically upward
+                    //
+                    // ```svgbob
+                    //   o
+                    //   ^
+                    //   |
+                    //   *
+                    // ```
+
+                    // Is connectable direction?
+                    if n.is_connectable(Direction::Up) && m.is_connectable(Direction::Down) {
+                        // Is nearest neighbor?
+                        if up.is_none() || up.unwrap().location().y < q.y {
+                            up.replace(m);
+                        }
                     }
-                }
-                // the horizontal direction
-                else if q.y == p.y {
-                    if q.x < p.x && left.filter(|l| l.location().x > q.x).is_none() {
-                        left.replace(m);
-                    } else if q.x > p.x && right.filter(|r| r.location().x < q.x).is_none() {
-                        right.replace(m);
+                } else if q.x == p.x && q.y > p.y {
+                    // vertically downward
+                    //
+                    // ```svgbob
+                    //   *
+                    //   |
+                    //   v
+                    //   o
+                    // ```
+
+                    // Is connectable direction?
+                    if n.is_connectable(Direction::Down) && m.is_connectable(Direction::Up) {
+                        // Is nearest neighbor?
+                        if down.is_none() || down.unwrap().location().y > q.y {
+                            down.replace(m);
+                        }
+                    }
+                } else if q.y == p.y && q.x < p.x {
+                    // horizontally leftward
+                    //
+                    // ```svgbob
+                    // o <-- *
+                    // ```
+
+                    // Is connectable direction?
+                    if n.is_connectable(Direction::Left) && m.is_connectable(Direction::Right) {
+                        // Is nearest neighbor?
+                        if left.is_none() || left.unwrap().location().x < q.x {
+                            left.replace(m);
+                        }
+                    }
+                } else if q.y == p.y && q.x > p.x {
+                    // horizontally rightward
+                    //
+                    // ```svgbob
+                    // * --> o
+                    // ```
+
+                    // Is connectable direction?
+                    if n.is_connectable(Direction::Right) && m.is_connectable(Direction::Left) {
+                        // Is nearest neighbor?
+                        if right.is_none() || right.unwrap().location().x > q.x {
+                            right.replace(m);
+                        }
                     }
                 }
             }
 
-            'OUTER: for dest in [left, right, up, down] {
+            for dest in [left, right, up, down] {
                 let Some(dest) = dest else { continue } ;
-
-                for r in shape_rects.iter() {
-                    if let Some((p, q)) = r.intersected_line(n.location(), dest.location()) {
-                        // Is a connection point?
-                        if p == q && (p == *n.location() || p == *dest.location()) {
-                            break;
-                        } else {
-                            continue 'OUTER;
-                        }
-                    }
-                }
-
                 edges.push((n.id(), dest.id()));
             }
         }
