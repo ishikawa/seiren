@@ -9,7 +9,8 @@ pub enum Direction {
     Right,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Display)]
+#[display(fmt = "({}, {})", x, y)]
 pub struct Point {
     pub x: f32,
     pub y: f32,

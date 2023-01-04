@@ -1,11 +1,15 @@
 //! Layout engine
-use derive_more::Display;
+use derive_more::{Add, Display};
+use smallvec::SmallVec;
 
 use crate::{
     geometry::{Direction, Path, Point, Size},
-    mir::{self, ConnectionPoint, NodeKind},
+    mir::{self, ConnectionPoint, ConnectionPointId, NodeKind},
 };
-use std::collections::{HashMap, VecDeque};
+use std::{
+    collections::{HashMap, VecDeque},
+    hash::Hash,
+};
 
 pub trait LayoutEngine {
     /// Place all nodes on 2D coordination.
@@ -30,9 +34,12 @@ pub trait LayoutEngine {
 #[derive(Debug, Clone)]
 pub struct RouteGraph {
     nodes: Vec<RouteNode>,
+
     // We use adjacency list as our primary data structure to represent graphs because a graph is
     // relatively sparse.
     edges: HashMap<RouteNodeId, Vec<RouteEdge>>,
+
+    connection_points: HashMap<ConnectionPointId, RouteNodeId>,
 }
 
 impl RouteGraph {
@@ -40,6 +47,7 @@ impl RouteGraph {
         Self {
             nodes: vec![],
             edges: HashMap::new(),
+            connection_points: HashMap::new(),
         }
     }
 
@@ -51,30 +59,51 @@ impl RouteGraph {
         self.nodes.get(id.0)
     }
 
+    pub fn get_connection_point(&self, id: ConnectionPointId) -> Option<&RouteNode> {
+        self.connection_points
+            .get(&id)
+            .and_then(|node_id| self.get_node(*node_id))
+    }
+
     pub fn add_node(&mut self, location: Point) -> RouteNodeId {
         self._add_node(location, None)
     }
 
     pub fn add_connection_point(&mut self, connection_point: &ConnectionPoint) -> RouteNodeId {
-        self._add_node(
+        let node_id = self._add_node(
             connection_point.location().clone(),
             Some(connection_point.direction().clone()),
-        )
-    }
+        );
 
-    fn _add_node(&mut self, location: Point, direction: Option<Direction>) -> RouteNodeId {
-        let node_id = RouteNodeId(self.nodes.len());
-        let node = RouteNode::new(node_id, location, direction);
-
-        self.nodes.push(node);
+        self.connection_points
+            .insert(connection_point.id(), node_id);
         node_id
     }
 
-    pub fn edges(
-        &self,
-        node_id: &RouteNodeId,
-    ) -> Option<impl ExactSizeIterator<Item = &RouteEdge>> {
-        self.edges.get(node_id).map(|x| x.iter())
+    fn _add_node(&mut self, location: Point, direction: Option<Direction>) -> RouteNodeId {
+        if let Some(pos) = self.nodes.iter().position(|n| *n.location() == location) {
+            if self.nodes[pos].direction() != direction {
+                panic!(
+                    "[BUG] Placing node at {}, but the old node direction is different. {:?} != {}",
+                    location,
+                    self.nodes[pos]
+                        .direction()
+                        .map_or("(none)".into(), |x| x.to_string()),
+                    direction.map_or("(none)".into(), |x| x.to_string())
+                );
+            }
+            RouteNodeId(pos)
+        } else {
+            let node_id = RouteNodeId(self.nodes.len());
+            let node = RouteNode::new(node_id, location, direction);
+
+            self.nodes.push(node);
+            node_id
+        }
+    }
+
+    pub fn edges(&self, node_id: RouteNodeId) -> Option<impl ExactSizeIterator<Item = &RouteEdge>> {
+        self.edges.get(&node_id).map(|x| x.iter())
     }
 
     pub fn add_edge(&mut self, a: RouteNodeId, b: RouteNodeId) {
@@ -147,6 +176,14 @@ impl RouteEdge {
     pub fn dest(&self) -> RouteNodeId {
         self.dest
     }
+}
+
+// Used for computing shortest path
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Add)]
+struct RouteCost(u32);
+
+impl RouteCost {
+    pub const MAX: Self = Self(u32::MAX);
 }
 
 #[derive(Debug)]
@@ -480,6 +517,19 @@ impl LayoutEngine for SimpleLayoutEngine {
         }
 
         self.connect_nearest_neighbor_edge_junctions(doc);
+
+        // Finding shortest edge paths
+        let mut paths: VecDeque<Vec<Point>> = VecDeque::with_capacity(doc.edges().len());
+
+        for edge in doc.edges() {
+            if let Some(path) = self.find_shortest_edges_path(doc, edge) {
+                paths.push_back(path);
+            }
+        }
+
+        for edge in doc.edges_mut() {
+            edge.path_points = Some(paths.pop_front().unwrap());
+        }
     }
 }
 
@@ -727,5 +777,123 @@ impl SimpleLayoutEngine {
         for (a, b) in edges {
             self.edge_route_graph.add_edge(a, b);
         }
+    }
+
+    /// Find the shortest path between both ends of a specified `edge`.
+    ///
+    /// Returns locations of each nodes (start, intermediate and end) on the shortest path.
+    fn find_shortest_edges_path(
+        &self,
+        doc: &mir::Document,
+        edge: &mir::Edge,
+    ) -> Option<Vec<Point>> {
+        // Run Dijkstra's algorithm for each connection points of the start/end node. It's
+        // inefficient but more generic solution than using heuristics about the distance between
+        // nodes.
+        let Some(start_node) = doc.get_node(&edge.start_node_id) else { return None };
+        let Some(end_node) = doc.get_node(&edge.end_node_id) else { return None };
+
+        let mut cost = RouteCost::MAX;
+        let mut path: Option<Vec<Point>> = None;
+
+        for src in start_node.connection_points() {
+            for dst in end_node.connection_points() {
+                let Some(src_node) = self.edge_route_graph.get_connection_point(src.id()) else { continue };
+                let Some(dst_node) = self.edge_route_graph.get_connection_point(dst.id()) else { continue };
+
+                let (c, p) = self.compute_shortest_path(src_node, dst_node);
+                if c < cost {
+                    path.replace(p);
+                    cost = c;
+                }
+            }
+        }
+
+        path
+    }
+
+    const COMPUTE_SHORTEST_PATH_INLINE_BUFFER: usize = 128;
+
+    /// Run Dijkstra's algorithm to compute the shortest path between `start_node` and `end_node`.
+    fn compute_shortest_path(
+        &self,
+        start_node: &RouteNode,
+        end_node: &RouteNode,
+    ) -> (RouteCost, Vec<Point>) {
+        let graph = self.edge_route_graph();
+        let n_nodes = graph.nodes().len();
+
+        // previous node in tracing the shortest path
+        let mut prev =
+            SmallVec::<[Option<RouteNodeId>; Self::COMPUTE_SHORTEST_PATH_INLINE_BUFFER]>::from_elem(
+                None, n_nodes,
+            );
+
+        // is the node in the tree yet?
+        let mut in_tree = SmallVec::<[bool; Self::COMPUTE_SHORTEST_PATH_INLINE_BUFFER]>::from_elem(
+            false, n_nodes,
+        );
+        // const (distance) between `start_node` and any node.
+        let mut costs =
+            SmallVec::<[RouteCost; Self::COMPUTE_SHORTEST_PATH_INLINE_BUFFER]>::from_elem(
+                RouteCost::MAX,
+                n_nodes,
+            );
+
+        // NOTE: We decided to use internal representation to improve performance...
+        costs[start_node.id.0] = RouteCost(0);
+
+        let mut node_id = start_node.id();
+
+        while !in_tree[node_id.0] {
+            in_tree[node_id.0] = true;
+
+            if let (Some(node), Some(edges)) = (graph.get_node(node_id), graph.edges(node_id)) {
+                for edge in edges {
+                    let to_node_id = edge.dest();
+                    let Some(to_node) = graph.get_node(to_node_id) else { continue };
+
+                    // cost = int(distance)
+                    let distance = node.location().distance(to_node.location());
+                    let w = costs[node_id.0] + RouteCost(distance as u32);
+
+                    if costs[to_node_id.0] > w {
+                        costs[to_node_id.0] = w;
+                        prev[to_node_id.0] = Some(node_id);
+                    }
+                }
+            }
+
+            let mut d = RouteCost::MAX;
+            for i in 0..n_nodes {
+                if !in_tree[i] && d > costs[i] {
+                    d = costs[i];
+                    node_id = RouteNodeId(i);
+                }
+            }
+
+            // Completed?
+            if node_id == end_node.id() {
+                let mut i = node_id;
+                let mut path = vec![*graph.get_node(i).unwrap().location()];
+
+                while let Some(p) = prev[i.0] {
+                    path.push(*graph.get_node(p).unwrap().location());
+
+                    if p == start_node.id() {
+                        break;
+                    }
+                    i = p;
+                }
+                path.reverse();
+
+                return (costs[end_node.id().0], path);
+            }
+        }
+
+        unreachable!(
+            "can't compute shortest path: n = {}, tree = {:?}",
+            n_nodes, in_tree
+        );
     }
 }

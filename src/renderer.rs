@@ -195,7 +195,7 @@ impl Renderer for SVGRenderer<'_> {
         if let Some(edge_route_graph) = self.edge_route_graph {
             // Draw route edges with direction
             for junction in edge_route_graph.nodes() {
-                let Some(edges) = edge_route_graph.edges(&junction.id()) else { continue };
+                let Some(edges) = edge_route_graph.edges(junction.id()) else { continue };
                 let from_pt = junction.location();
 
                 for edge in edges {
@@ -267,6 +267,22 @@ impl Renderer for SVGRenderer<'_> {
                     .set("fill", "red");
 
                 svg_doc = svg_doc.add(circle);
+            }
+
+            // Draw shortest paths
+            for edge in doc.edges() {
+                let Some(path_points) = &edge.path_points else { continue };
+
+                for p in path_points {
+                    let circle = element::Circle::new()
+                        .set("cx", p.x)
+                        .set("cy", p.y)
+                        .set("r", circle_radius)
+                        .set("stroke", "white")
+                        .set("stroke-width", 1)
+                        .set("fill", "orange");
+                    svg_doc = svg_doc.add(circle);
+                }
             }
         }
 
