@@ -2,7 +2,7 @@
 use crate::{
     color::{RGBColor, WebColor},
     error::BackendError,
-    geometry::{PathCommand, Point},
+    geometry::{Direction, PathCommand, Point},
     layout::RouteGraph,
     mir,
 };
@@ -190,29 +190,73 @@ impl Renderer for SVGRenderer<'_> {
         }
 
         // -- Draw debug info
+        let circle_radius = 4.0;
+
         if let Some(edge_route_graph) = self.edge_route_graph {
-            // Draw route edges
+            // Draw route edges with direction
             for junction in edge_route_graph.nodes() {
-                if let Some(edges) = edge_route_graph.edges(&junction.id()) {
-                    for edge in edges {
-                        let Some(dest) = edge_route_graph.get_node(edge.dest()) else { continue };
+                let Some(edges) = edge_route_graph.edges(&junction.id()) else { continue };
+                let from_pt = junction.location();
 
-                        let line = element::Line::new()
-                            .set("x1", junction.location().x)
-                            .set("y1", junction.location().y)
-                            .set("x2", dest.location().x)
-                            .set("y2", dest.location().y)
-                            .set("stroke", "red")
-                            .set("stroke-width", 1);
+                for edge in edges {
+                    let Some(dest) = edge_route_graph.get_node(edge.dest()) else { continue };
+                    let to_pt = dest.location();
 
-                        svg_doc = svg_doc.add(line);
-                    }
+                    let line = element::Line::new()
+                        .set("x1", from_pt.x)
+                        .set("y1", from_pt.y)
+                        .set("x2", to_pt.x)
+                        .set("y2", to_pt.y)
+                        .set("stroke", "red")
+                        .set("stroke-width", 1);
+
+                    // arrow
+                    let (x, y) = (to_pt.x, to_pt.y);
+                    let width = 5.0 / 2.0;
+                    let height = 7.0;
+                    let points = match line_direction(from_pt, to_pt) {
+                        Direction::Up => [
+                            (x, y + circle_radius),
+                            (x - width, y + height + circle_radius),
+                            (x + width, y + height + circle_radius),
+                        ],
+                        Direction::Down => [
+                            (x, y - circle_radius),
+                            (x - width, y - height - circle_radius),
+                            (x + width, y - height - circle_radius),
+                        ],
+                        Direction::Left => [
+                            (x + circle_radius, y),
+                            (x + height + circle_radius, y + width),
+                            (x + height + circle_radius, y - width),
+                        ],
+                        Direction::Right => [
+                            (x - circle_radius, y),
+                            (x - height - circle_radius, y + width),
+                            (x - height - circle_radius, y - width),
+                        ],
+                    };
+
+                    points
+                        .iter()
+                        .map(|p| format!("{}, {}", p.0, p.1))
+                        .collect::<Vec<_>>()
+                        .join(" ");
+
+                    let arrow = element::Polygon::new().set("fill", "red").set(
+                        "points",
+                        points
+                            .iter()
+                            .map(|p| format!("{}, {}", p.0, p.1))
+                            .collect::<Vec<_>>()
+                            .join(" "),
+                    );
+
+                    svg_doc = svg_doc.add(line).add(arrow);
                 }
             }
 
             // Draw junction nodes
-            let circle_radius = 4.0;
-
             for junction in edge_route_graph.nodes() {
                 let circle = element::Circle::new()
                     .set("cx", junction.location().x)
@@ -340,5 +384,18 @@ impl SVGRenderer<'_> {
             .set("d", d.join(" "));
 
         Ok((svg_path, start_circle, end_circle))
+    }
+}
+
+/// Returns the direction of a horizontal or vertical line.
+fn line_direction(from: &Point, to: &Point) -> Direction {
+    if to.x < from.x {
+        Direction::Left
+    } else if to.x > from.x {
+        Direction::Right
+    } else if to.y < from.y {
+        Direction::Up
+    } else {
+        Direction::Down
     }
 }

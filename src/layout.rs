@@ -78,7 +78,7 @@ impl RouteGraph {
     }
 
     pub fn add_edge(&mut self, a: RouteNodeId, b: RouteNodeId) {
-        for (from, to) in [(a, b), (b, a)] {
+        for (from, to) in [(a, b)] {
             self.edges
                 .entry(from)
                 .and_modify(|v| {
