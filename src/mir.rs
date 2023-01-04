@@ -19,6 +19,10 @@ use derive_more::Display;
 #[display(fmt = "{}", _0)]
 pub struct NodeId(usize);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
+#[display(fmt = "{}:{}", _0, _1)]
+pub struct ConnectionPointId(NodeId, usize);
+
 #[derive(Debug)]
 pub struct Node {
     pub id: NodeId,
@@ -69,8 +73,16 @@ impl Node {
         self.connection_points.iter()
     }
 
-    pub fn append_connection_point(&mut self, connection_point: ConnectionPoint) {
-        self.connection_points.push(connection_point);
+    pub fn append_connection_point(
+        &mut self,
+        location: Point,
+        direction: Direction,
+    ) -> ConnectionPointId {
+        let pid = ConnectionPointId(self.id, self.connection_points.len());
+
+        self.connection_points
+            .push(ConnectionPoint::new(pid, location, direction));
+        pid
     }
 }
 
@@ -83,6 +95,7 @@ pub enum NodeKind {
 
 #[derive(Debug, Clone)]
 pub struct ConnectionPoint {
+    id: ConnectionPointId,
     location: Point,
 
     /// Indicates the direction in which the connection point can be connected
@@ -90,11 +103,16 @@ pub struct ConnectionPoint {
 }
 
 impl ConnectionPoint {
-    pub fn new(location: Point, direction: Direction) -> Self {
+    pub fn new(id: ConnectionPointId, location: Point, direction: Direction) -> Self {
         Self {
+            id,
             location,
             direction,
         }
+    }
+
+    pub fn id(&self) -> ConnectionPointId {
+        self.id
     }
 
     pub fn location(&self) -> &Point {

@@ -225,7 +225,7 @@ impl LayoutEngine for SimpleLayoutEngine {
                 (record_rect.mid_x(), record_rect.max_y(), Direction::Down),
                 (record_rect.min_x(), record_rect.mid_y(), Direction::Left),
             ] {
-                record_node.append_connection_point(ConnectionPoint::new(Point::new(x, y), d));
+                record_node.append_connection_point(Point::new(x, y), d);
             }
 
             // For each field in a rectangle, connection points are placed
@@ -247,8 +247,7 @@ impl LayoutEngine for SimpleLayoutEngine {
                         (field_rect.mid_x(), field_rect.max_y(), Direction::Down),
                         (field_rect.min_x(), field_rect.mid_y(), Direction::Left),
                     ] {
-                        field_node
-                            .append_connection_point(ConnectionPoint::new(Point::new(x, y), d));
+                        field_node.append_connection_point(Point::new(x, y), d);
                     }
                 } else if field_index == 0 {
                     for (x, y, d) in [
@@ -256,8 +255,7 @@ impl LayoutEngine for SimpleLayoutEngine {
                         (field_rect.max_x(), field_rect.mid_y(), Direction::Right),
                         (field_rect.min_x(), field_rect.mid_y(), Direction::Left),
                     ] {
-                        field_node
-                            .append_connection_point(ConnectionPoint::new(Point::new(x, y), d));
+                        field_node.append_connection_point(Point::new(x, y), d);
                     }
                 } else if field_index == (field_id_vec.len() - 1) {
                     for (x, y, d) in [
@@ -265,16 +263,14 @@ impl LayoutEngine for SimpleLayoutEngine {
                         (field_rect.mid_x(), field_rect.max_y(), Direction::Down),
                         (field_rect.min_x(), field_rect.mid_y(), Direction::Left),
                     ] {
-                        field_node
-                            .append_connection_point(ConnectionPoint::new(Point::new(x, y), d));
+                        field_node.append_connection_point(Point::new(x, y), d);
                     }
                 } else {
                     for (x, y, d) in [
                         (field_rect.max_x(), field_rect.mid_y(), Direction::Right),
                         (field_rect.min_x(), field_rect.mid_y(), Direction::Left),
                     ] {
-                        field_node
-                            .append_connection_point(ConnectionPoint::new(Point::new(x, y), d));
+                        field_node.append_connection_point(Point::new(x, y), d);
                     }
                 }
             }
@@ -308,23 +304,29 @@ impl LayoutEngine for SimpleLayoutEngine {
             // Give the combination with the maximum distance as the initial value, and choose
             // the combination with the shortest distance between two connection points.
             let mut connection: (
-                ConnectionPoint, // start point
-                ConnectionPoint, // end point
-                f32,             // distance
-            ) = (
-                ConnectionPoint::new(Point::default(), Direction::Left),
-                ConnectionPoint::new(Point::default(), Direction::Left),
-                f32::MAX,
-            );
+                Option<ConnectionPoint>, // start point
+                Option<ConnectionPoint>, // end point
+                f32,                     // distance
+            ) = (None, None, f32::MAX);
 
             for pt1 in start_node.connection_points() {
                 for pt2 in end_node.connection_points() {
                     let d = pt1.location().distance(pt2.location());
                     if d < connection.2 {
-                        connection = (pt1.clone(), pt2.clone(), d);
+                        connection = (Some(pt1.clone()), Some(pt2.clone()), d);
                     }
                 }
             }
+
+            if connection.0.is_none() || connection.1.is_none() {
+                continue;
+            }
+
+            let connection: (
+                ConnectionPoint, // start point
+                ConnectionPoint, // end point
+                f32,             // distance
+            ) = (connection.0.unwrap(), connection.1.unwrap(), connection.2);
 
             // Build a path.
             let start_cx = connection.0.location().x;
