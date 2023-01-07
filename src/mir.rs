@@ -11,7 +11,7 @@
 //! | (0, 100)
 //! ```
 use crate::color::WebColor;
-use crate::geometry::{Direction, Path, Point, Rect, Size};
+use crate::geometry::{Direction, Point, Rect, Size};
 use derive_builder::Builder;
 use derive_more::Display;
 
@@ -316,7 +316,6 @@ impl Default for FontSize {
 pub struct Edge {
     pub start_node_id: NodeId,
     pub end_node_id: NodeId,
-    pub path: Option<Path>,
     pub path_points: Option<Vec<Point>>,
 }
 
@@ -325,7 +324,6 @@ impl Edge {
         Self {
             start_node_id: start_node,
             end_node_id: end_node,
-            path: None,
             path_points: None,
         }
     }

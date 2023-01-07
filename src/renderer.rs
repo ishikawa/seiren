@@ -2,7 +2,7 @@
 use crate::{
     color::{RGBColor, WebColor},
     error::BackendError,
-    geometry::{Direction, PathCommand, Point},
+    geometry::{Direction, Point},
     layout::RouteGraph,
     mir,
 };
@@ -348,6 +348,7 @@ impl SVGRenderer<'_> {
         edge: &mir::Edge,
     ) -> Result<(element::Path, element::Circle, element::Circle), BackendError> {
         let circle_radius = 4.0;
+        let path_radius = 6.0;
         let stroke_width = 1.5;
         let stroke_color = WebColor::RGB(RGBColor {
             red: 136,
@@ -356,13 +357,14 @@ impl SVGRenderer<'_> {
         });
         let background_color = WebColor::RGB(RGBColor::new(28, 28, 28));
 
-        let Some(path) = &edge.path else {
+        let Some(path_points) = &edge.path_points else {
             return Err(BackendError::InvalidLayout(edge.start_node_id))
         };
+        assert!(path_points.len() >= 2);
 
         // Draw circles at both ends of the edge.
-        let start_point = path.start_point();
-        let end_point = path.end_point();
+        let start_point = path_points[0];
+        let end_point = path_points.last().unwrap();
 
         let start_circle = element::Circle::new()
             .set("cx", start_point.x)
@@ -379,18 +381,208 @@ impl SVGRenderer<'_> {
             .set("stroke-width", stroke_width)
             .set("fill", background_color.to_string());
 
+        // When you draw the line, trace edge's `path_points` and look at the points before and
+        // after to determine the path to draw.
+        //
+        // ```svgbob
+        // 0 - - - - - - - - - - - - - - - - - - - - - ->
+        // ! -------+
+        // !        |       (1)
+        // !    (0) o--------*--o
+        // !        |           |
+        // !        |           * (1)
+        // !        |           |
+        // !        |           |
+        // !        |           |
+        // !        |       (2) *                +------
+        // !        |           | (2)    (3)     |
+        // !        |           o--*------o------o (4)
+        // v        |                            |
+        // ```
+
         let mut d = vec![];
 
-        for command in path.commands() {
-            let c = match command {
-                PathCommand::MoveTo(pt) => format!("M{} {}", pt.x, pt.y),
-                PathCommand::LineTo(pt) => format!("L{} {}", pt.x, pt.y),
-                PathCommand::QuadTo(ctrl, to) => {
-                    format!("Q{} {} {} {}", ctrl.x, ctrl.y, to.x, to.y)
-                }
-            };
+        for i in 0..path_points.len() {
+            let pt = path_points[i];
 
-            d.push(c);
+            if i == 0 {
+                d.push(format!("M{} {}", pt.x, pt.y));
+            } else if i == path_points.len() - 1 {
+                d.push(format!("L{} {}", pt.x, pt.y));
+            } else {
+                let bp = path_points[i - 1]; // backward
+                let fp = path_points[i + 1]; // forward
+
+                let d1 = bp.vh_direction(&pt);
+                let d2 = pt.vh_direction(&fp);
+
+                match (d1, d2) {
+                    (Direction::Up, Direction::Up)
+                    | (Direction::Down, Direction::Down)
+                    | (Direction::Left, Direction::Left)
+                    | (Direction::Right, Direction::Right) => {
+                        // same direction
+                        d.push(format!("L{} {}", pt.x, pt.y));
+                    }
+                    (Direction::Up, Direction::Down)
+                    | (Direction::Down, Direction::Up)
+                    | (Direction::Left, Direction::Right)
+                    | (Direction::Right, Direction::Left) => {
+                        // A turnaround line is invalid
+                        panic!("turnaround line is detected at #{}", i);
+                    }
+                    (Direction::Up, Direction::Left) => {
+                        // ```svgbob
+                        //  o<--------*--o (pt)
+                        // (fp)          |
+                        //               *
+                        //               |
+                        //               |
+                        //               o (bp)
+                        // ```
+                        d.push(format!("L{} {}", pt.x, pt.y + path_radius));
+                        d.push(format!(
+                            "Q{} {} {} {}",
+                            pt.x,
+                            pt.y,
+                            pt.x - path_radius,
+                            pt.y
+                        ));
+                    }
+                    (Direction::Right, Direction::Down) => {
+                        // ```svgbob
+                        //  o---------*--o (pt)
+                        // (bp)          |
+                        //               *
+                        //               |
+                        //               v
+                        //               o (fp)
+                        // ```
+                        d.push(format!("L{} {}", pt.x - path_radius, pt.y));
+                        d.push(format!(
+                            "Q{} {} {} {}",
+                            pt.x,
+                            pt.y,
+                            pt.x,
+                            pt.y + path_radius
+                        ));
+                    }
+                    (Direction::Up, Direction::Right) => {
+                        // ```svgbob
+                        //  o--*------->o (fp)
+                        //  | (pt)
+                        //  *
+                        //  |
+                        //  |
+                        //  o (bp)
+                        // ```
+                        d.push(format!("L{} {}", pt.x, pt.y + path_radius));
+                        d.push(format!(
+                            "Q{} {} {} {}",
+                            pt.x,
+                            pt.y,
+                            pt.x + path_radius,
+                            pt.y
+                        ));
+                    }
+                    (Direction::Down, Direction::Left) => {
+                        // ```svgbob
+                        //              o (bp)
+                        //              |
+                        //              |
+                        //              *
+                        //              |
+                        //  o<-------*--o (pt)
+                        // (fp)
+                        // ```
+                        d.push(format!("L{} {}", pt.x, pt.y - path_radius));
+                        d.push(format!(
+                            "Q{} {} {} {}",
+                            pt.x,
+                            pt.y,
+                            pt.x - path_radius,
+                            pt.y
+                        ));
+                    }
+                    (Direction::Down, Direction::Right) => {
+                        // ```svgbob
+                        // (bp)
+                        //  o
+                        //  |
+                        //  |
+                        //  *
+                        //  |
+                        //  o---*------->o (fp)
+                        // (pt)
+                        // ```
+                        d.push(format!("L{} {}", pt.x, pt.y - path_radius));
+                        d.push(format!(
+                            "Q{} {} {} {}",
+                            pt.x,
+                            pt.y,
+                            pt.x + path_radius,
+                            pt.y
+                        ));
+                    }
+                    (Direction::Left, Direction::Up) => {
+                        // ```svgbob
+                        // (fp)
+                        //  o
+                        //  ^
+                        //  |
+                        //  *
+                        //  |
+                        //  o---*--------o (bp)
+                        // (pt)
+                        // ```
+                        d.push(format!("L{} {}", pt.x + path_radius, pt.y));
+                        d.push(format!(
+                            "Q{} {} {} {}",
+                            pt.x,
+                            pt.y,
+                            pt.x,
+                            pt.y - path_radius
+                        ));
+                    }
+                    (Direction::Left, Direction::Down) => {
+                        // ```svgbob
+                        //  o<-*--------o (bp)
+                        //  | (pt)
+                        //  *
+                        //  |
+                        //  v
+                        //  o (fp)
+                        // ```
+                        d.push(format!("L{} {}", pt.x + path_radius, pt.y));
+                        d.push(format!(
+                            "Q{} {} {} {}",
+                            pt.x,
+                            pt.y,
+                            pt.x,
+                            pt.y + path_radius
+                        ));
+                    }
+                    (Direction::Right, Direction::Up) => {
+                        // ```svgbob
+                        //              o (fp)
+                        //              ^
+                        //              |
+                        //              *
+                        //              |
+                        //  o--------*--o (pt)
+                        // (bp)
+                        // ```
+                        d.push(format!("L{} {}", pt.x - path_radius, pt.y));
+                        d.push(format!(
+                            "Q{} {} {} {}",
+                            pt.x,
+                            pt.y,
+                            pt.x,
+                            pt.y - path_radius
+                        ));
+                    }
+                };
+            }
         }
 
         let svg_path = element::Path::new()

@@ -3,7 +3,7 @@ use derive_more::{Add, Display};
 use smallvec::SmallVec;
 
 use crate::{
-    geometry::{Direction, Path, Point, Size},
+    geometry::{Direction, Point, Size},
     mir::{self, ConnectionPoint, ConnectionPointId, NodeKind},
 };
 use std::{
@@ -330,95 +330,6 @@ impl LayoutEngine for SimpleLayoutEngine {
     /// v        |                       |
     /// ```
     fn draw_edge_path(&mut self, doc: &mut mir::Document) {
-        let path_radius = 6.0;
-
-        let mut paths: VecDeque<Path> = VecDeque::with_capacity(doc.edges().len());
-
-        for edge in doc.edges() {
-            let Some(start_node) = doc.get_node(&edge.start_node_id) else { continue };
-            let Some(end_node) = doc.get_node(&edge.end_node_id) else { continue };
-
-            // Give the combination with the maximum distance as the initial value, and choose
-            // the combination with the shortest distance between two connection points.
-            let mut connection: (
-                Option<ConnectionPoint>, // start point
-                Option<ConnectionPoint>, // end point
-                f32,                     // distance
-            ) = (None, None, f32::MAX);
-
-            for pt1 in start_node.connection_points() {
-                for pt2 in end_node.connection_points() {
-                    let d = pt1.location().distance(pt2.location());
-                    if d < connection.2 {
-                        connection = (Some(pt1.clone()), Some(pt2.clone()), d);
-                    }
-                }
-            }
-
-            if connection.0.is_none() || connection.1.is_none() {
-                continue;
-            }
-
-            let connection: (
-                ConnectionPoint, // start point
-                ConnectionPoint, // end point
-                f32,             // distance
-            ) = (connection.0.unwrap(), connection.1.unwrap(), connection.2);
-
-            // Build a path.
-            let start_cx = connection.0.location().x;
-            let end_cx = connection.1.location().x;
-            let start_cy = connection.0.location().y;
-            let end_cy = connection.1.location().y;
-
-            let mid_x = start_cx.min(end_cx) + (start_cx - end_cx).abs() / 2.0;
-
-            let (ctrl1_x, ctrl2_x) = if start_cx < end_cx {
-                (mid_x - path_radius, mid_x + path_radius)
-            } else {
-                (mid_x + path_radius, mid_x - path_radius)
-            };
-            let (ctrl1_y, ctrl2_y) = if start_cy < end_cy {
-                (start_cy + path_radius, end_cy - path_radius)
-            } else {
-                (start_cy - path_radius, end_cy + path_radius)
-            };
-
-            // ```svgbob
-            // 0 - - - - - - - - - - - - - - - - - - - ->
-            // ! -------+
-            // !        |       (A)
-            // !  start o--------*--.
-            // !        |           |
-            // !        |           * (B)
-            // !        |           |
-            // !        |           |
-            // !        |           |
-            // !        |       (C) *           +-------
-            // !        |           | (D))      |
-            // !        |           `--*--------o (E)
-            // v        |                       |
-            // ```
-            let mut path = Path::new(*connection.0.location());
-
-            // (A)
-            path.line_to(Point::new(ctrl1_x, start_cy));
-            // (B)
-            path.quad_to(Point::new(mid_x, start_cy), Point::new(mid_x, ctrl1_y));
-            // (C)
-            path.line_to(Point::new(mid_x, ctrl2_y));
-            // (D)
-            path.quad_to(Point::new(mid_x, end_cy), Point::new(ctrl2_x, end_cy));
-            // (E)
-            path.line_to(Point::new(end_cx, end_cy));
-
-            paths.push_back(path);
-        }
-
-        for edge in doc.edges_mut() {
-            edge.path = Some(paths.pop_front().unwrap());
-        }
-
         // We don't actually draw the edges here, but only calculate the set of points through which
         // the edges pass.
         //
