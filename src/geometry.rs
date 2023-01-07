@@ -30,6 +30,19 @@ impl Point {
     pub fn distance(&self, other: &Point) -> f32 {
         ((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt()
     }
+
+    /// Returns the direction of a vertical or horizontal line.
+    pub fn vh_direction(&self, to: &Point) -> Direction {
+        if to.x < self.x {
+            Direction::Left
+        } else if to.x > self.x {
+            Direction::Right
+        } else if to.y < self.y {
+            Direction::Up
+        } else {
+            Direction::Down
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -378,6 +391,16 @@ mod tests {
         let pt2 = Point::new(3.0, 0.0);
 
         assert_eq!(pt1.distance(&pt2), 3.0);
+    }
+
+    #[test]
+    fn point_vh_direction() {
+        let pt1 = Point::zero();
+
+        assert_eq!(pt1.vh_direction(&Point::new(-1.0, 0.0)), Direction::Left);
+        assert_eq!(pt1.vh_direction(&Point::new(1.0, 0.0)), Direction::Right);
+        assert_eq!(pt1.vh_direction(&Point::new(0.0, -1.0)), Direction::Up);
+        assert_eq!(pt1.vh_direction(&Point::new(0.0, 1.0)), Direction::Down);
     }
 
     #[test]

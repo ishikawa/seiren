@@ -214,7 +214,7 @@ impl Renderer for SVGRenderer<'_> {
                     let (x, y) = (to_pt.x, to_pt.y);
                     let width = 5.0 / 2.0;
                     let height = 7.0;
-                    let points = match line_direction(from_pt, to_pt) {
+                    let points = match from_pt.vh_direction(to_pt) {
                         Direction::Up => [
                             (x, y + circle_radius),
                             (x - width, y + height + circle_radius),
@@ -400,18 +400,5 @@ impl SVGRenderer<'_> {
             .set("d", d.join(" "));
 
         Ok((svg_path, start_circle, end_circle))
-    }
-}
-
-/// Returns the direction of a horizontal or vertical line.
-fn line_direction(from: &Point, to: &Point) -> Direction {
-    if to.x < from.x {
-        Direction::Left
-    } else if to.x > from.x {
-        Direction::Right
-    } else if to.y < from.y {
-        Direction::Up
-    } else {
-        Direction::Down
     }
 }
