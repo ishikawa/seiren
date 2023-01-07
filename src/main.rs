@@ -5,6 +5,8 @@ use seiren::renderer::{Renderer, SVGRenderer};
 use std::io;
 use std::{fs, io::Read};
 
+const DEBUG: bool = false;
+
 fn main() -> Result<(), io::Error> {
     let mut filename = "(stdin)".to_string();
     let mut args = std::env::args();
@@ -106,13 +108,18 @@ fn main() -> Result<(), io::Error> {
 
     if let Some(ast) = ast {
         let mut doc = ast.into_mir();
-        let engine = SimpleLayoutEngine::new();
+        let mut engine = SimpleLayoutEngine::new();
 
         engine.place_nodes(&mut doc);
         engine.place_connection_points(&mut doc);
         engine.draw_edge_path(&mut doc);
 
-        let backend = SVGRenderer::new();
+        let mut backend = SVGRenderer::new();
+
+        if DEBUG {
+            backend.edge_route_graph = Some(engine.edge_route_graph());
+        }
+
         let stdout = io::stdout();
         let mut handle = stdout.lock();
 

@@ -9,8 +9,11 @@ pub mod renderer;
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use crate::{
         layout::{LayoutEngine, SimpleLayoutEngine},
+        parser::{parse},
         mir::Document,
         erd::{Module, EntityDefinition, EntityPath, EntityField, EntityFieldType, EntityFieldKey, EntityRelation},
         renderer::{Renderer, SVGRenderer},
@@ -21,8 +24,7 @@ mod tests {
     fn empty_doc() {
         let diagram = Module::new(None);
         let mut doc = diagram.into_mir();
-
-        let engine = SimpleLayoutEngine::new();
+        let mut engine = SimpleLayoutEngine::new();
 
         engine.place_nodes(&mut doc);
 
@@ -104,7 +106,7 @@ mod tests {
         ));
 
         let mut doc = diagram.into_mir();
-        let engine = SimpleLayoutEngine::new();
+        let mut engine = SimpleLayoutEngine::new();
 
         engine.place_nodes(&mut doc);
         engine.place_connection_points(&mut doc);
@@ -239,4 +241,48 @@ FK
 <circle cx=\"350\" cy=\"132.5\" fill=\"#1C1C1C\" r=\"4\" stroke=\"#888888\" stroke-width=\"1.5\"/>
 </svg>", "\n", 0);
     }
+
+    #[test]
+    fn example_files() {
+        let paths = fs::read_dir("example").unwrap();
+
+        for path in paths {
+            let path = path.unwrap();
+            let path = path.path();
+
+            let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
+
+            if path.extension().unwrap() != "seiren" {
+                continue;
+            }
+
+            let expected_svg = fs::read_to_string(path.with_extension("svg"));
+            assert!(expected_svg.is_ok(), "no svg file for {}", file_name);
+            let expected_svg = expected_svg.unwrap();
+            let src = fs::read_to_string(path).unwrap();
+
+            let (ast, errs, parse_errs) = parse(&src);
+
+            assert_eq!(errs, vec![], "file:{}", file_name);
+            assert_eq!(parse_errs, vec![], "file:{}", file_name);
+
+            let mut doc = ast.unwrap().into_mir();
+            let mut engine = SimpleLayoutEngine::new();
+
+            engine.place_nodes(&mut doc);
+            engine.place_connection_points(&mut doc);
+            engine.draw_edge_path(&mut doc);
+
+            let backend = SVGRenderer::new();
+            let mut bytes: Vec<u8> = vec![];
+    
+            backend
+                .render(&doc, &mut bytes)
+                .expect("cannot generate SVG");
+    
+            let svg = String::from_utf8(bytes).unwrap();
+            assert_diff!(svg.as_str(), expected_svg.as_str(), "\n", 0);
+        }        
+    }
 }
+
