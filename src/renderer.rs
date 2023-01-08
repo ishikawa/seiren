@@ -258,15 +258,24 @@ impl Renderer for SVGRenderer<'_> {
 
             // Draw junction nodes
             for junction in edge_route_graph.nodes() {
+                let pt = junction.location();
                 let circle = element::Circle::new()
-                    .set("cx", junction.location().x)
-                    .set("cy", junction.location().y)
+                    .set("cx", pt.x)
+                    .set("cy", pt.y)
                     .set("r", circle_radius)
                     .set("stroke", "white")
                     .set("stroke-width", 1)
                     .set("fill", "red");
+                let label = element::Text::new()
+                    .set("x", pt.x + circle_radius + 2.0)
+                    .set("y", pt.y + 4.0)
+                    .set("dominant-baseline", "hanging")
+                    .set("fill", "white")
+                    .set("font-size", 12)
+                    .set("font-family", "monospace")
+                    .add(svg::node::Text::new(junction.id().to_string()));
 
-                svg_doc = svg_doc.add(circle);
+                svg_doc = svg_doc.add(circle).add(label);
             }
 
             // Draw shortest paths
