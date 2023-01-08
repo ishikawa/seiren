@@ -601,8 +601,24 @@ impl SimpleLayoutEngine {
     }
 
     /// Connects the nearest nodes in the vertical and horizontal directions.
-    fn connect_nearest_neighbor_edge_junctions(&mut self, _: &mir::Document) {
+    fn connect_nearest_neighbor_edge_junctions(&mut self, doc: &mir::Document) {
         let mut edges: Vec<(RouteNodeId, RouteNodeId)> = Vec::new();
+
+        // Collision detection
+        let shape_rects = doc
+            .body()
+            .children()
+            .filter_map(|node_id| doc.get_node(&node_id))
+            .filter_map(|node| {
+                node.rect().map(|r| {
+                    (
+                        node.id,
+                        // Nodes on the edge of shapes must remain. So minus 1.0.
+                        r.inset_by(1.0, 1.0),
+                    )
+                })
+            })
+            .collect::<Vec<_>>();
 
         for n in self.edge_route_graph.nodes() {
             let mut left: Option<&RouteNode> = None;
@@ -613,6 +629,7 @@ impl SimpleLayoutEngine {
             for m in self.edge_route_graph.nodes() {
                 let p = n.location();
                 let q = m.location();
+                let no_collision = || !shape_rects.iter().any(|(_, r)| r.intersects_line(p, q));
 
                 if q.x == p.x && q.y < p.y {
                     // vertically upward
@@ -627,7 +644,7 @@ impl SimpleLayoutEngine {
                     // Is connectable direction?
                     if n.is_connectable(Direction::Up) && m.is_connectable(Direction::Down) {
                         // Is nearest neighbor?
-                        if up.is_none() || up.unwrap().location().y < q.y {
+                        if up.is_none() || up.unwrap().location().y < q.y && no_collision() {
                             up.replace(m);
                         }
                     }
@@ -644,7 +661,7 @@ impl SimpleLayoutEngine {
                     // Is connectable direction?
                     if n.is_connectable(Direction::Down) && m.is_connectable(Direction::Up) {
                         // Is nearest neighbor?
-                        if down.is_none() || down.unwrap().location().y > q.y {
+                        if down.is_none() || down.unwrap().location().y > q.y && no_collision() {
                             down.replace(m);
                         }
                     }
@@ -658,7 +675,7 @@ impl SimpleLayoutEngine {
                     // Is connectable direction?
                     if n.is_connectable(Direction::Left) && m.is_connectable(Direction::Right) {
                         // Is nearest neighbor?
-                        if left.is_none() || left.unwrap().location().x < q.x {
+                        if left.is_none() || left.unwrap().location().x < q.x && no_collision() {
                             left.replace(m);
                         }
                     }
@@ -672,7 +689,7 @@ impl SimpleLayoutEngine {
                     // Is connectable direction?
                     if n.is_connectable(Direction::Right) && m.is_connectable(Direction::Left) {
                         // Is nearest neighbor?
-                        if right.is_none() || right.unwrap().location().x > q.x {
+                        if right.is_none() || right.unwrap().location().x > q.x && no_collision() {
                             right.replace(m);
                         }
                     }

@@ -1,0 +1,44 @@
+erd posts {
+  users {
+    id         int PK
+    `uuid`     uuid
+    email      text
+    `text`     text
+    about_html text
+    created_at timestamp
+  }
+  
+  posts {
+    id         int PK
+    `uuid`     uuid
+    title      text
+    content    text
+    created_at timestamp
+    created_by int FK
+  }
+
+  comments {
+    id         int PK
+    content    text
+    created_at timestamp
+    post_id    int FK
+    created_by int FK    
+  }
+
+  post_tags {
+    post_id int FK
+    tag_id  int FK
+  }
+
+  tags {
+    id   int PK
+    name text
+  }
+
+  // Edges
+  posts.created_by o--o users.id
+  comments.post_id o--o posts.id
+  comments.created_by o--o users.id
+  post_tags.post_id o--o posts.id
+  post_tags.tag_id o--o tags.id
+}

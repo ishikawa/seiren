@@ -1,0 +1,243 @@
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg">
+<rect fill="#1C1C1C" height="100%" width="100%"/>
+<defs>
+<clipPath id="record-clip-path-0">
+<rect height="245" rx="6" ry="6" width="300" x="50" y="80"/>
+</clipPath>
+<clipPath id="record-clip-path-1">
+<rect height="245" rx="6" ry="6" width="300" x="430" y="80"/>
+</clipPath>
+<clipPath id="record-clip-path-2">
+<rect height="210" rx="6" ry="6" width="300" x="810" y="80"/>
+</clipPath>
+<clipPath id="record-clip-path-3">
+<rect height="105" rx="6" ry="6" width="300" x="1190" y="80"/>
+</clipPath>
+<clipPath id="record-clip-path-4">
+<rect height="105" rx="6" ry="6" width="300" x="1570" y="80"/>
+</clipPath>
+</defs>
+<rect fill="#212121" height="245" rx="6" ry="6" stroke="#494949" width="300" x="50" y="80"/>
+<rect clip-path="url(#record-clip-path-0)" fill="#494949" height="35" width="300" x="50" y="80"/>
+<text dominant-baseline="middle" fill="white" font-family="Monaco,Lucida Console,monospace" font-weight="bold" text-anchor="start" x="62" y="97.5">
+users
+</text>
+<line stroke="#494949" stroke-width="1" x1="50" x2="350" y1="115" y2="115"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="62" y="132.5">
+id
+</text>
+<text dominant-baseline="middle" fill="#ECC700" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="290" y="132.5">
+int
+</text>
+<circle cx="326.5" cy="132.5" fill="#373737" r="11.5"/>
+<text dominant-baseline="middle" fill="white" font-family="Trebuchet MS,sans-serif" font-size="xx-small" text-anchor="middle" x="326.5" y="132.5">
+PK
+</text>
+<line stroke="#494949" stroke-width="1" x1="50" x2="350" y1="150" y2="150"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="62" y="167.5">
+uuid
+</text>
+<text dominant-baseline="middle" fill="#ECC700" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="290" y="167.5">
+uuid
+</text>
+<line stroke="#494949" stroke-width="1" x1="50" x2="350" y1="185" y2="185"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="62" y="202.5">
+email
+</text>
+<text dominant-baseline="middle" fill="#D66905" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="290" y="202.5">
+text
+</text>
+<line stroke="#494949" stroke-width="1" x1="50" x2="350" y1="220" y2="220"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="62" y="237.5">
+text
+</text>
+<text dominant-baseline="middle" fill="#D66905" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="290" y="237.5">
+text
+</text>
+<line stroke="#494949" stroke-width="1" x1="50" x2="350" y1="255" y2="255"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="62" y="272.5">
+about_html
+</text>
+<text dominant-baseline="middle" fill="#D66905" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="290" y="272.5">
+text
+</text>
+<line stroke="#494949" stroke-width="1" x1="50" x2="350" y1="290" y2="290"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="62" y="307.5">
+created_at
+</text>
+<text dominant-baseline="middle" fill="#06B697" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="290" y="307.5">
+timestamp
+</text>
+<rect fill="#212121" height="245" rx="6" ry="6" stroke="#494949" width="300" x="430" y="80"/>
+<rect clip-path="url(#record-clip-path-1)" fill="#494949" height="35" width="300" x="430" y="80"/>
+<text dominant-baseline="middle" fill="white" font-family="Monaco,Lucida Console,monospace" font-weight="bold" text-anchor="start" x="442" y="97.5">
+posts
+</text>
+<line stroke="#494949" stroke-width="1" x1="430" x2="730" y1="115" y2="115"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="442" y="132.5">
+id
+</text>
+<text dominant-baseline="middle" fill="#ECC700" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="670" y="132.5">
+int
+</text>
+<circle cx="706.5" cy="132.5" fill="#373737" r="11.5"/>
+<text dominant-baseline="middle" fill="white" font-family="Trebuchet MS,sans-serif" font-size="xx-small" text-anchor="middle" x="706.5" y="132.5">
+PK
+</text>
+<line stroke="#494949" stroke-width="1" x1="430" x2="730" y1="150" y2="150"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="442" y="167.5">
+uuid
+</text>
+<text dominant-baseline="middle" fill="#ECC700" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="670" y="167.5">
+uuid
+</text>
+<line stroke="#494949" stroke-width="1" x1="430" x2="730" y1="185" y2="185"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="442" y="202.5">
+title
+</text>
+<text dominant-baseline="middle" fill="#D66905" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="670" y="202.5">
+text
+</text>
+<line stroke="#494949" stroke-width="1" x1="430" x2="730" y1="220" y2="220"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="442" y="237.5">
+content
+</text>
+<text dominant-baseline="middle" fill="#D66905" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="670" y="237.5">
+text
+</text>
+<line stroke="#494949" stroke-width="1" x1="430" x2="730" y1="255" y2="255"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="442" y="272.5">
+created_at
+</text>
+<text dominant-baseline="middle" fill="#06B697" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="670" y="272.5">
+timestamp
+</text>
+<line stroke="#494949" stroke-width="1" x1="430" x2="730" y1="290" y2="290"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="442" y="307.5">
+created_by
+</text>
+<text dominant-baseline="middle" fill="#ECC700" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="670" y="307.5">
+int
+</text>
+<circle cx="706.5" cy="307.5" fill="#202937" r="11.5"/>
+<text dominant-baseline="middle" fill="#1170FB" font-family="Trebuchet MS,sans-serif" font-size="xx-small" text-anchor="middle" x="706.5" y="307.5">
+FK
+</text>
+<rect fill="#212121" height="210" rx="6" ry="6" stroke="#494949" width="300" x="810" y="80"/>
+<rect clip-path="url(#record-clip-path-2)" fill="#494949" height="35" width="300" x="810" y="80"/>
+<text dominant-baseline="middle" fill="white" font-family="Monaco,Lucida Console,monospace" font-weight="bold" text-anchor="start" x="822" y="97.5">
+comments
+</text>
+<line stroke="#494949" stroke-width="1" x1="810" x2="1110" y1="115" y2="115"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="822" y="132.5">
+id
+</text>
+<text dominant-baseline="middle" fill="#ECC700" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="1050" y="132.5">
+int
+</text>
+<circle cx="1086.5" cy="132.5" fill="#373737" r="11.5"/>
+<text dominant-baseline="middle" fill="white" font-family="Trebuchet MS,sans-serif" font-size="xx-small" text-anchor="middle" x="1086.5" y="132.5">
+PK
+</text>
+<line stroke="#494949" stroke-width="1" x1="810" x2="1110" y1="150" y2="150"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="822" y="167.5">
+content
+</text>
+<text dominant-baseline="middle" fill="#D66905" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="1050" y="167.5">
+text
+</text>
+<line stroke="#494949" stroke-width="1" x1="810" x2="1110" y1="185" y2="185"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="822" y="202.5">
+created_at
+</text>
+<text dominant-baseline="middle" fill="#06B697" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="1050" y="202.5">
+timestamp
+</text>
+<line stroke="#494949" stroke-width="1" x1="810" x2="1110" y1="220" y2="220"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="822" y="237.5">
+post_id
+</text>
+<text dominant-baseline="middle" fill="#ECC700" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="1050" y="237.5">
+int
+</text>
+<circle cx="1086.5" cy="237.5" fill="#202937" r="11.5"/>
+<text dominant-baseline="middle" fill="#1170FB" font-family="Trebuchet MS,sans-serif" font-size="xx-small" text-anchor="middle" x="1086.5" y="237.5">
+FK
+</text>
+<line stroke="#494949" stroke-width="1" x1="810" x2="1110" y1="255" y2="255"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="822" y="272.5">
+created_by
+</text>
+<text dominant-baseline="middle" fill="#ECC700" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="1050" y="272.5">
+int
+</text>
+<circle cx="1086.5" cy="272.5" fill="#202937" r="11.5"/>
+<text dominant-baseline="middle" fill="#1170FB" font-family="Trebuchet MS,sans-serif" font-size="xx-small" text-anchor="middle" x="1086.5" y="272.5">
+FK
+</text>
+<rect fill="#212121" height="105" rx="6" ry="6" stroke="#494949" width="300" x="1190" y="80"/>
+<rect clip-path="url(#record-clip-path-3)" fill="#494949" height="35" width="300" x="1190" y="80"/>
+<text dominant-baseline="middle" fill="white" font-family="Monaco,Lucida Console,monospace" font-weight="bold" text-anchor="start" x="1202" y="97.5">
+post_tags
+</text>
+<line stroke="#494949" stroke-width="1" x1="1190" x2="1490" y1="115" y2="115"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="1202" y="132.5">
+post_id
+</text>
+<text dominant-baseline="middle" fill="#ECC700" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="1430" y="132.5">
+int
+</text>
+<circle cx="1466.5" cy="132.5" fill="#202937" r="11.5"/>
+<text dominant-baseline="middle" fill="#1170FB" font-family="Trebuchet MS,sans-serif" font-size="xx-small" text-anchor="middle" x="1466.5" y="132.5">
+FK
+</text>
+<line stroke="#494949" stroke-width="1" x1="1190" x2="1490" y1="150" y2="150"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="1202" y="167.5">
+tag_id
+</text>
+<text dominant-baseline="middle" fill="#ECC700" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="1430" y="167.5">
+int
+</text>
+<circle cx="1466.5" cy="167.5" fill="#202937" r="11.5"/>
+<text dominant-baseline="middle" fill="#1170FB" font-family="Trebuchet MS,sans-serif" font-size="xx-small" text-anchor="middle" x="1466.5" y="167.5">
+FK
+</text>
+<rect fill="#212121" height="105" rx="6" ry="6" stroke="#494949" width="300" x="1570" y="80"/>
+<rect clip-path="url(#record-clip-path-4)" fill="#494949" height="35" width="300" x="1570" y="80"/>
+<text dominant-baseline="middle" fill="white" font-family="Monaco,Lucida Console,monospace" font-weight="bold" text-anchor="start" x="1582" y="97.5">
+tags
+</text>
+<line stroke="#494949" stroke-width="1" x1="1570" x2="1870" y1="115" y2="115"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="1582" y="132.5">
+id
+</text>
+<text dominant-baseline="middle" fill="#ECC700" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="1810" y="132.5">
+int
+</text>
+<circle cx="1846.5" cy="132.5" fill="#373737" r="11.5"/>
+<text dominant-baseline="middle" fill="white" font-family="Trebuchet MS,sans-serif" font-size="xx-small" text-anchor="middle" x="1846.5" y="132.5">
+PK
+</text>
+<line stroke="#494949" stroke-width="1" x1="1570" x2="1870" y1="150" y2="150"/>
+<text dominant-baseline="middle" fill="white" font-family="Courier New,monospace" font-weight="lighter" text-anchor="start" x="1582" y="167.5">
+name
+</text>
+<text dominant-baseline="middle" fill="#D66905" font-family="Courier New,monospace" font-size="small" font-weight="lighter" text-anchor="end" x="1810" y="167.5">
+text
+</text>
+<path d="M430 307.5 L396 307.5 Q390 307.5 390 301.5 L390 138.5 Q390 132.5 384 132.5 L350 132.5" fill="transparent" stroke="#888888" stroke-width="1.5"/>
+<circle cx="430" cy="307.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
+<circle cx="350" cy="132.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
+<path d="M810 237.5 L776 237.5 Q770 237.5 770 231.5 L770 138.5 Q770 132.5 764 132.5 L730 132.5" fill="transparent" stroke="#888888" stroke-width="1.5"/>
+<circle cx="810" cy="237.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
+<circle cx="730" cy="132.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
+<path d="M810 272.5 L776 272.5 Q770 272.5 770 278.5 L770 307.5 L770 330 L770 359 Q770 365 764 365 L580 365 L396 365 Q390 365 390 359 L390 307.5 L390 138.5 Q390 132.5 384 132.5 L350 132.5" fill="transparent" stroke="#888888" stroke-width="1.5"/>
+<circle cx="810" cy="272.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
+<circle cx="350" cy="132.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
+<path d="M1190 132.5 L1156 132.5 Q1150 132.5 1150 126.5 L1150 46 Q1150 40 1144 40 L776 40 Q770 40 770 46 L770 126.5 Q770 132.5 764 132.5 L730 132.5" fill="transparent" stroke="#888888" stroke-width="1.5"/>
+<circle cx="1190" cy="132.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
+<circle cx="730" cy="132.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
+<path d="M1490 167.5 L1524 167.5 Q1530 167.5 1530 161.5 L1530 138.5 Q1530 132.5 1536 132.5 L1570 132.5" fill="transparent" stroke="#888888" stroke-width="1.5"/>
+<circle cx="1490" cy="167.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
+<circle cx="1570" cy="132.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
+</svg>
