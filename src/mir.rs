@@ -11,7 +11,7 @@
 //! | (0, 100)
 //! ```
 use crate::color::WebColor;
-use crate::geometry::{Direction, Point, Rect, Size};
+use crate::geometry::{Orientation, Point, Rect, Size};
 use derive_builder::Builder;
 use derive_more::Display;
 
@@ -21,7 +21,7 @@ pub struct NodeId(usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
 #[display(fmt = "{}:{}", _0, _1)]
-pub struct ConnectionPointId(NodeId, usize);
+pub struct TerminalPortId(NodeId, usize);
 
 #[derive(Debug)]
 pub struct Node {
@@ -31,7 +31,7 @@ pub struct Node {
     pub size: Option<Size>,
 
     /// Points to which edges can be connected.
-    connection_points: Vec<ConnectionPoint>,
+    terminal_ports: Vec<TerminalPort>,
     kind: NodeKind,
     children: Vec<NodeId>,
 }
@@ -43,7 +43,7 @@ impl Node {
             kind,
             origin: None,
             size: None,
-            connection_points: vec![],
+            terminal_ports: vec![],
             children: vec![],
         }
     }
@@ -69,19 +69,19 @@ impl Node {
     }
 
     // --- Connection points
-    pub fn connection_points(&self) -> impl ExactSizeIterator<Item = &ConnectionPoint> {
-        self.connection_points.iter()
+    pub fn terminal_ports(&self) -> impl ExactSizeIterator<Item = &TerminalPort> {
+        self.terminal_ports.iter()
     }
 
-    pub fn append_connection_point(
+    pub fn append_terminal_port(
         &mut self,
         location: Point,
-        direction: Direction,
-    ) -> ConnectionPointId {
-        let pid = ConnectionPointId(self.id, self.connection_points.len());
+        orientation: Orientation,
+    ) -> TerminalPortId {
+        let pid = TerminalPortId(self.id, self.terminal_ports.len());
 
-        self.connection_points
-            .push(ConnectionPoint::new(pid, location, direction));
+        self.terminal_ports
+            .push(TerminalPort::new(pid, location, orientation));
         pid
     }
 }
@@ -94,24 +94,24 @@ pub enum NodeKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct ConnectionPoint {
-    id: ConnectionPointId,
+pub struct TerminalPort {
+    id: TerminalPortId,
     location: Point,
 
-    /// Indicates the direction in which the connection point can be connected
-    direction: Direction,
+    /// Angle at which incoming edges can incident to or outgoing edges can exit.
+    orientation: Orientation,
 }
 
-impl ConnectionPoint {
-    pub fn new(id: ConnectionPointId, location: Point, direction: Direction) -> Self {
+impl TerminalPort {
+    pub fn new(id: TerminalPortId, location: Point, orientation: Orientation) -> Self {
         Self {
             id,
             location,
-            direction,
+            orientation,
         }
     }
 
-    pub fn id(&self) -> ConnectionPointId {
+    pub fn id(&self) -> TerminalPortId {
         self.id
     }
 
@@ -119,14 +119,10 @@ impl ConnectionPoint {
         &self.location
     }
 
-    pub fn direction(&self) -> Direction {
-        self.direction
+    pub fn orientation(&self) -> Orientation {
+        self.orientation
     }
 }
-
-/// 接続ポイントに接続できる方向を表す
-#[derive(Debug)]
-pub enum ConnectionPointDirection {}
 
 #[derive(Debug)]
 pub struct Document {

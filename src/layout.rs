@@ -3,8 +3,8 @@ use derive_more::{Add, Display};
 use smallvec::SmallVec;
 
 use crate::{
-    geometry::{Direction, Point, Size},
-    mir::{self, ConnectionPoint, ConnectionPointId, NodeKind},
+    geometry::{Orientation, Point, Size},
+    mir::{self, NodeKind, TerminalPort, TerminalPortId},
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -17,12 +17,12 @@ pub trait LayoutEngine {
     /// The engine must assign `origin` and `size` of all nodes.
     fn place_nodes(&mut self, doc: &mut mir::Document);
 
-    /// Place all connection points for every node.
+    /// Place all terminal ports for every node.
     ///
-    /// The engine must add all possible connection points to `connection_points` of nodes.
-    fn place_connection_points(&mut self, doc: &mut mir::Document);
+    /// The engine must add all possible terminal ports to `terminal_ports` of nodes.
+    fn place_terminal_ports(&mut self, doc: &mut mir::Document);
 
-    /// Draw path between both ends (connection points) of each edge.
+    /// Draw path between both ends (terminal ports) of each edge.
     ///
     /// The engine must build a `path` of edges.
     fn draw_edge_path(&mut self, doc: &mut mir::Document);
@@ -39,7 +39,7 @@ pub struct RouteGraph {
     // relatively sparse.
     edges: HashMap<RouteNodeId, Vec<RouteEdge>>,
 
-    connection_points: HashMap<ConnectionPointId, RouteNodeId>,
+    terminal_ports: HashMap<TerminalPortId, RouteNodeId>,
 }
 
 impl RouteGraph {
@@ -47,7 +47,7 @@ impl RouteGraph {
         Self {
             nodes: vec![],
             edges: HashMap::new(),
-            connection_points: HashMap::new(),
+            terminal_ports: HashMap::new(),
         }
     }
 
@@ -59,8 +59,8 @@ impl RouteGraph {
         self.nodes.get(id.0)
     }
 
-    pub fn get_connection_point(&self, id: ConnectionPointId) -> Option<&RouteNode> {
-        self.connection_points
+    pub fn get_terminal_port(&self, id: TerminalPortId) -> Option<&RouteNode> {
+        self.terminal_ports
             .get(&id)
             .and_then(|node_id| self.get_node(*node_id))
     }
@@ -69,33 +69,32 @@ impl RouteGraph {
         self._add_node(location, None)
     }
 
-    pub fn add_connection_point(&mut self, connection_point: &ConnectionPoint) -> RouteNodeId {
+    pub fn add_terminal_port(&mut self, terminal_port: &TerminalPort) -> RouteNodeId {
         let node_id = self._add_node(
-            connection_point.location().clone(),
-            Some(connection_point.direction().clone()),
+            terminal_port.location().clone(),
+            Some(terminal_port.orientation().clone()),
         );
 
-        self.connection_points
-            .insert(connection_point.id(), node_id);
+        self.terminal_ports.insert(terminal_port.id(), node_id);
         node_id
     }
 
-    fn _add_node(&mut self, location: Point, direction: Option<Direction>) -> RouteNodeId {
+    fn _add_node(&mut self, location: Point, orientation: Option<Orientation>) -> RouteNodeId {
         if let Some(pos) = self.nodes.iter().position(|n| *n.location() == location) {
-            if self.nodes[pos].direction() != direction {
+            if self.nodes[pos].orientation() != orientation {
                 panic!(
-                    "[BUG] Placing node at {}, but the old node direction is different. {:?} != {}",
+                    "[BUG] Placing node at {}, but the old node orientation is different. {:?} != {}",
                     location,
                     self.nodes[pos]
-                        .direction()
+                        .orientation()
                         .map_or("(none)".into(), |x| x.to_string()),
-                    direction.map_or("(none)".into(), |x| x.to_string())
+                    orientation.map_or("(none)".into(), |x| x.to_string())
                 );
             }
             RouteNodeId(pos)
         } else {
             let node_id = RouteNodeId(self.nodes.len());
-            let node = RouteNode::new(node_id, location, direction);
+            let node = RouteNode::new(node_id, location, orientation);
 
             self.nodes.push(node);
             node_id
@@ -128,17 +127,17 @@ pub struct RouteNode {
     id: RouteNodeId,
     location: Point,
 
-    /// If the node is a connection point, copy its `direction` to
+    /// If the node is a terminal port, copy its `orientation` to
     /// detect edge connectivity.
-    direction: Option<Direction>,
+    orientation: Option<Orientation>,
 }
 
 impl RouteNode {
-    pub fn new(id: RouteNodeId, location: Point, direction: Option<Direction>) -> Self {
+    pub fn new(id: RouteNodeId, location: Point, orientation: Option<Orientation>) -> Self {
         Self {
             id,
             location,
-            direction,
+            orientation,
         }
     }
 
@@ -150,15 +149,15 @@ impl RouteNode {
         &self.location
     }
 
-    pub fn direction(&self) -> Option<Direction> {
-        self.direction
+    pub fn orientation(&self) -> Option<Orientation> {
+        self.orientation
     }
 
-    /// Returns `true` if `node.direction` is `None` or `direction`.
-    pub fn is_connectable(&self, direction: Direction) -> bool {
-        match self.direction {
+    /// Returns `true` if `node.orientation` is `None` or equal to a specified `orientation`.
+    pub fn is_connectable(&self, orientation: Orientation) -> bool {
+        match self.orientation {
             None => true,
-            Some(d) => d == direction,
+            Some(d) => d == orientation,
         }
     }
 }
@@ -247,25 +246,25 @@ impl LayoutEngine for SimpleLayoutEngine {
         }
     }
 
-    fn place_connection_points(&mut self, doc: &mut mir::Document) {
+    fn place_terminal_ports(&mut self, doc: &mut mir::Document) {
         let child_id_vec = doc.body().children().collect::<Vec<_>>();
 
         for (_, child_id) in child_id_vec.iter().enumerate() {
             let Some(record_node) = doc.get_node_mut(child_id) else { continue };
             let Some(record_rect) = record_node.rect() else { continue };
 
-            // In the case of a rectangle, connection points are placed in
+            // In the case of a rectangle, terminal ports are placed in
             // the center of each of the four edges.
             for (x, y, d) in [
-                (record_rect.mid_x(), record_rect.min_y(), Direction::Up),
-                (record_rect.max_x(), record_rect.mid_y(), Direction::Right),
-                (record_rect.mid_x(), record_rect.max_y(), Direction::Down),
-                (record_rect.min_x(), record_rect.mid_y(), Direction::Left),
+                (record_rect.mid_x(), record_rect.min_y(), Orientation::Up),
+                (record_rect.max_x(), record_rect.mid_y(), Orientation::Right),
+                (record_rect.mid_x(), record_rect.max_y(), Orientation::Down),
+                (record_rect.min_x(), record_rect.mid_y(), Orientation::Left),
             ] {
-                record_node.append_connection_point(Point::new(x, y), d);
+                record_node.append_terminal_port(Point::new(x, y), d);
             }
 
-            // For each field in a rectangle, connection points are placed
+            // For each field in a rectangle, terminal ports are placed
             // the center of:
             // - each of the four edges - if the number of fields is `1`.
             // - top, left and right - for the top field
@@ -279,35 +278,35 @@ impl LayoutEngine for SimpleLayoutEngine {
 
                 if field_id_vec.len() == 1 {
                     for (x, y, d) in [
-                        (field_rect.mid_x(), field_rect.min_y(), Direction::Up),
-                        (field_rect.max_x(), field_rect.mid_y(), Direction::Right),
-                        (field_rect.mid_x(), field_rect.max_y(), Direction::Down),
-                        (field_rect.min_x(), field_rect.mid_y(), Direction::Left),
+                        (field_rect.mid_x(), field_rect.min_y(), Orientation::Up),
+                        (field_rect.max_x(), field_rect.mid_y(), Orientation::Right),
+                        (field_rect.mid_x(), field_rect.max_y(), Orientation::Down),
+                        (field_rect.min_x(), field_rect.mid_y(), Orientation::Left),
                     ] {
-                        field_node.append_connection_point(Point::new(x, y), d);
+                        field_node.append_terminal_port(Point::new(x, y), d);
                     }
                 } else if field_index == 0 {
                     for (x, y, d) in [
-                        (field_rect.mid_x(), field_rect.min_y(), Direction::Up),
-                        (field_rect.max_x(), field_rect.mid_y(), Direction::Right),
-                        (field_rect.min_x(), field_rect.mid_y(), Direction::Left),
+                        (field_rect.mid_x(), field_rect.min_y(), Orientation::Up),
+                        (field_rect.max_x(), field_rect.mid_y(), Orientation::Right),
+                        (field_rect.min_x(), field_rect.mid_y(), Orientation::Left),
                     ] {
-                        field_node.append_connection_point(Point::new(x, y), d);
+                        field_node.append_terminal_port(Point::new(x, y), d);
                     }
                 } else if field_index == (field_id_vec.len() - 1) {
                     for (x, y, d) in [
-                        (field_rect.max_x(), field_rect.mid_y(), Direction::Right),
-                        (field_rect.mid_x(), field_rect.max_y(), Direction::Down),
-                        (field_rect.min_x(), field_rect.mid_y(), Direction::Left),
+                        (field_rect.max_x(), field_rect.mid_y(), Orientation::Right),
+                        (field_rect.mid_x(), field_rect.max_y(), Orientation::Down),
+                        (field_rect.min_x(), field_rect.mid_y(), Orientation::Left),
                     ] {
-                        field_node.append_connection_point(Point::new(x, y), d);
+                        field_node.append_terminal_port(Point::new(x, y), d);
                     }
                 } else {
                     for (x, y, d) in [
-                        (field_rect.max_x(), field_rect.mid_y(), Direction::Right),
-                        (field_rect.min_x(), field_rect.mid_y(), Direction::Left),
+                        (field_rect.max_x(), field_rect.mid_y(), Orientation::Right),
+                        (field_rect.min_x(), field_rect.mid_y(), Orientation::Left),
                     ] {
-                        field_node.append_connection_point(Point::new(x, y), d);
+                        field_node.append_terminal_port(Point::new(x, y), d);
                     }
                 }
             }
@@ -361,14 +360,14 @@ impl LayoutEngine for SimpleLayoutEngine {
         //
         // b. Place junction nodes at the four corner points of (a)
         //
-        // c. From the start/end connection point, draw a straight line horizontally or vertically
+        // c. From the start/end terminal port, draw a straight line horizontally or vertically
         //    until it collides with another shape node, and place a new junction node at the point
         //    where it intersects the junction node (b) in a crosswise direction.
         //
         // d. Remove junction nodes that overlap any (fatter) shapes. However, nodes on the edge of
         //    the shape must remain.
         //
-        // e. Add start/end connection points.
+        // e. Add start/end terminal ports.
 
         // Place junction nodes at the four corner points around each shape node.
         let shape_junctions = self.edge_junction_nodes_around_shapes(&doc);
@@ -382,8 +381,8 @@ impl LayoutEngine for SimpleLayoutEngine {
             let Some(start_node) = doc.get_node(&edge.start_node_id) else { continue };
             let Some(end_node) = doc.get_node(&edge.end_node_id) else { continue };
 
-            for pt in start_node.connection_points() {
-                let junctions = self.edge_junction_nodes_from_connection_point(
+            for pt in start_node.terminal_ports() {
+                let junctions = self.edge_junction_nodes_from_terminal_port(
                     &doc,
                     start_node,
                     pt,
@@ -392,8 +391,8 @@ impl LayoutEngine for SimpleLayoutEngine {
 
                 crossing_junctions.extend(junctions);
             }
-            for pt in end_node.connection_points() {
-                let junctions = self.edge_junction_nodes_from_connection_point(
+            for pt in end_node.terminal_ports() {
+                let junctions = self.edge_junction_nodes_from_terminal_port(
                     &doc,
                     end_node,
                     pt,
@@ -414,16 +413,16 @@ impl LayoutEngine for SimpleLayoutEngine {
             self.edge_route_graph.add_node(j);
         }
 
-        // Add start/end connection points.
+        // Add start/end terminal ports.
         for edge in doc.edges() {
             let Some(start_node) = doc.get_node(&edge.start_node_id) else { continue };
             let Some(end_node) = doc.get_node(&edge.end_node_id) else { continue };
 
-            for pt in start_node.connection_points() {
-                self.edge_route_graph.add_connection_point(pt);
+            for pt in start_node.terminal_ports() {
+                self.edge_route_graph.add_terminal_port(pt);
             }
-            for pt in end_node.connection_points() {
-                self.edge_route_graph.add_connection_point(pt);
+            for pt in end_node.terminal_ports() {
+                self.edge_route_graph.add_terminal_port(pt);
             }
         }
 
@@ -471,14 +470,14 @@ impl SimpleLayoutEngine {
         junctions
     }
 
-    // c. From the start/end connection point, draw a straight line horizontally or vertically
+    // c. From the start/end terminal port, draw a straight line horizontally or vertically
     //    until it collides with another shape node, and place a new junction node at the point
     //    where it intersects the junction node (b) in a crosswise direction.
-    fn edge_junction_nodes_from_connection_point(
+    fn edge_junction_nodes_from_terminal_port(
         &self,
         doc: &mir::Document,
         _: &mir::Node,
-        connection_point: &ConnectionPoint,
+        terminal_port: &TerminalPort,
         other_junctions: &[Point],
     ) -> Vec<Point> {
         let margin = Self::SHAPE_JUNCTION_MARGIN;
@@ -492,10 +491,10 @@ impl SimpleLayoutEngine {
             .map(|r| r.inset_by(-margin, -margin))
             .collect::<Vec<_>>();
 
-        let conn_pt = connection_point.location();
+        let conn_pt = terminal_port.location();
 
-        match connection_point.direction() {
-            Direction::Left => {
+        match terminal_port.orientation() {
+            Orientation::Left => {
                 let mut min_x = 0.0f32;
                 let line_end = Point::new(f32::MIN, conn_pt.y);
 
@@ -511,7 +510,7 @@ impl SimpleLayoutEngine {
                     }
                 }
             }
-            Direction::Right => {
+            Orientation::Right => {
                 let mut max_x = f32::MAX;
                 let line_end = Point::new(f32::MAX, conn_pt.y);
 
@@ -527,7 +526,7 @@ impl SimpleLayoutEngine {
                     }
                 }
             }
-            Direction::Up => {
+            Orientation::Up => {
                 let mut max_y = f32::MAX;
                 let line_end = Point::new(conn_pt.x, f32::MAX);
 
@@ -543,7 +542,7 @@ impl SimpleLayoutEngine {
                     }
                 }
             }
-            Direction::Down => {
+            Orientation::Down => {
                 let mut min_y = 0.0f32;
                 let line_end = Point::new(conn_pt.x, f32::MIN);
 
@@ -642,7 +641,7 @@ impl SimpleLayoutEngine {
                     // ```
 
                     // Is connectable direction?
-                    if n.is_connectable(Direction::Up) && m.is_connectable(Direction::Down) {
+                    if n.is_connectable(Orientation::Up) && m.is_connectable(Orientation::Down) {
                         // Is nearest neighbor?
                         if up.is_none() || up.unwrap().location().y < q.y && no_collision() {
                             up.replace(m);
@@ -659,7 +658,7 @@ impl SimpleLayoutEngine {
                     // ```
 
                     // Is connectable direction?
-                    if n.is_connectable(Direction::Down) && m.is_connectable(Direction::Up) {
+                    if n.is_connectable(Orientation::Down) && m.is_connectable(Orientation::Up) {
                         // Is nearest neighbor?
                         if down.is_none() || down.unwrap().location().y > q.y && no_collision() {
                             down.replace(m);
@@ -673,7 +672,7 @@ impl SimpleLayoutEngine {
                     // ```
 
                     // Is connectable direction?
-                    if n.is_connectable(Direction::Left) && m.is_connectable(Direction::Right) {
+                    if n.is_connectable(Orientation::Left) && m.is_connectable(Orientation::Right) {
                         // Is nearest neighbor?
                         if left.is_none() || left.unwrap().location().x < q.x && no_collision() {
                             left.replace(m);
@@ -687,7 +686,7 @@ impl SimpleLayoutEngine {
                     // ```
 
                     // Is connectable direction?
-                    if n.is_connectable(Direction::Right) && m.is_connectable(Direction::Left) {
+                    if n.is_connectable(Orientation::Right) && m.is_connectable(Orientation::Left) {
                         // Is nearest neighbor?
                         if right.is_none() || right.unwrap().location().x > q.x && no_collision() {
                             right.replace(m);
@@ -715,7 +714,7 @@ impl SimpleLayoutEngine {
         doc: &mir::Document,
         edge: &mir::Edge,
     ) -> Option<Vec<Point>> {
-        // Run Dijkstra's algorithm for each connection points of the start/end node. It's
+        // Run Dijkstra's algorithm for each terminal ports of the start/end node. It's
         // inefficient but more generic solution than using heuristics about the distance between
         // nodes.
         let Some(start_node) = doc.get_node(&edge.start_node_id) else { return None };
@@ -724,10 +723,10 @@ impl SimpleLayoutEngine {
         let mut cost = RouteCost::MAX;
         let mut path: Option<Vec<Point>> = None;
 
-        for src in start_node.connection_points() {
-            for dst in end_node.connection_points() {
-                let Some(src_node) = self.edge_route_graph.get_connection_point(src.id()) else { continue };
-                let Some(dst_node) = self.edge_route_graph.get_connection_point(dst.id()) else { continue };
+        for src in start_node.terminal_ports() {
+            for dst in end_node.terminal_ports() {
+                let Some(src_node) = self.edge_route_graph.get_terminal_port(src.id()) else { continue };
+                let Some(dst_node) = self.edge_route_graph.get_terminal_port(dst.id()) else { continue };
 
                 let (c, p) = self.compute_shortest_path(src_node, dst_node);
                 if c < cost {
