@@ -109,7 +109,7 @@ mod tests {
         let mut engine = SimpleLayoutEngine::new();
 
         engine.place_nodes(&mut doc);
-        engine.place_connection_points(&mut doc);
+        engine.place_terminal_ports(&mut doc);
         engine.draw_edge_path(&mut doc);
 
         doc
@@ -270,7 +270,7 @@ FK
             let mut engine = SimpleLayoutEngine::new();
 
             engine.place_nodes(&mut doc);
-            engine.place_connection_points(&mut doc);
+            engine.place_terminal_ports(&mut doc);
             engine.draw_edge_path(&mut doc);
 
             let backend = SVGRenderer::new();
