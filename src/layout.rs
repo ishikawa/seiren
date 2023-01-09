@@ -83,7 +83,7 @@ impl RouteGraph {
         if let Some(pos) = self.nodes.iter().position(|n| *n.location() == location) {
             if self.nodes[pos].orientation() != orientation {
                 panic!(
-                    "[BUG] Placing node at {}, but the old node direction is different. {:?} != {}",
+                    "[BUG] Placing node at {}, but the old node orientation is different. {:?} != {}",
                     location,
                     self.nodes[pos]
                         .orientation()
@@ -153,11 +153,11 @@ impl RouteNode {
         self.orientation
     }
 
-    /// Returns `true` if `node.direction` is `None` or `direction`.
-    pub fn is_connectable(&self, direction: Orientation) -> bool {
+    /// Returns `true` if `node.orientation` is `None` or equal to a specified `orientation`.
+    pub fn is_connectable(&self, orientation: Orientation) -> bool {
         match self.orientation {
             None => true,
-            Some(d) => d == direction,
+            Some(d) => d == orientation,
         }
     }
 }

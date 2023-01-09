@@ -76,12 +76,12 @@ impl Node {
     pub fn append_terminal_port(
         &mut self,
         location: Point,
-        direction: Orientation,
+        orientation: Orientation,
     ) -> TerminalPortId {
         let pid = TerminalPortId(self.id, self.terminal_ports.len());
 
         self.terminal_ports
-            .push(TerminalPort::new(pid, location, direction));
+            .push(TerminalPort::new(pid, location, orientation));
         pid
     }
 }
