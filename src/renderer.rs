@@ -2,7 +2,7 @@
 use crate::{
     color::{RGBColor, WebColor},
     error::BackendError,
-    geometry::{Direction, Point},
+    geometry::{Orientation, Point},
     layout::RouteGraph,
     mir,
 };
@@ -321,25 +321,25 @@ impl SVGRenderer<'_> {
                 let bp = path_points[i - 1]; // backward
                 let fp = path_points[i + 1]; // forward
 
-                let d1 = bp.vh_direction(&pt);
-                let d2 = pt.vh_direction(&fp);
+                let d1 = bp.orthogonal_direction(&pt);
+                let d2 = pt.orthogonal_direction(&fp);
 
                 match (d1, d2) {
-                    (Direction::Up, Direction::Up)
-                    | (Direction::Down, Direction::Down)
-                    | (Direction::Left, Direction::Left)
-                    | (Direction::Right, Direction::Right) => {
+                    (Orientation::Up, Orientation::Up)
+                    | (Orientation::Down, Orientation::Down)
+                    | (Orientation::Left, Orientation::Left)
+                    | (Orientation::Right, Orientation::Right) => {
                         // same direction
                         d.push(format!("L{} {}", pt.x, pt.y));
                     }
-                    (Direction::Up, Direction::Down)
-                    | (Direction::Down, Direction::Up)
-                    | (Direction::Left, Direction::Right)
-                    | (Direction::Right, Direction::Left) => {
+                    (Orientation::Up, Orientation::Down)
+                    | (Orientation::Down, Orientation::Up)
+                    | (Orientation::Left, Orientation::Right)
+                    | (Orientation::Right, Orientation::Left) => {
                         // A turnaround line is invalid
                         panic!("turnaround line is detected at #{}", i);
                     }
-                    (Direction::Up, Direction::Left) => {
+                    (Orientation::Up, Orientation::Left) => {
                         // ```svgbob
                         //  o<--------*--o (pt)
                         // (fp)          |
@@ -357,7 +357,7 @@ impl SVGRenderer<'_> {
                             pt.y
                         ));
                     }
-                    (Direction::Right, Direction::Down) => {
+                    (Orientation::Right, Orientation::Down) => {
                         // ```svgbob
                         //  o---------*--o (pt)
                         // (bp)          |
@@ -375,7 +375,7 @@ impl SVGRenderer<'_> {
                             pt.y + path_radius
                         ));
                     }
-                    (Direction::Up, Direction::Right) => {
+                    (Orientation::Up, Orientation::Right) => {
                         // ```svgbob
                         //  o--*------->o (fp)
                         //  | (pt)
@@ -393,7 +393,7 @@ impl SVGRenderer<'_> {
                             pt.y
                         ));
                     }
-                    (Direction::Down, Direction::Left) => {
+                    (Orientation::Down, Orientation::Left) => {
                         // ```svgbob
                         //              o (bp)
                         //              |
@@ -412,7 +412,7 @@ impl SVGRenderer<'_> {
                             pt.y
                         ));
                     }
-                    (Direction::Down, Direction::Right) => {
+                    (Orientation::Down, Orientation::Right) => {
                         // ```svgbob
                         // (bp)
                         //  o
@@ -432,7 +432,7 @@ impl SVGRenderer<'_> {
                             pt.y
                         ));
                     }
-                    (Direction::Left, Direction::Up) => {
+                    (Orientation::Left, Orientation::Up) => {
                         // ```svgbob
                         // (fp)
                         //  o
@@ -452,7 +452,7 @@ impl SVGRenderer<'_> {
                             pt.y - path_radius
                         ));
                     }
-                    (Direction::Left, Direction::Down) => {
+                    (Orientation::Left, Orientation::Down) => {
                         // ```svgbob
                         //  o<-*--------o (bp)
                         //  | (pt)
@@ -470,7 +470,7 @@ impl SVGRenderer<'_> {
                             pt.y + path_radius
                         ));
                     }
-                    (Direction::Right, Direction::Up) => {
+                    (Orientation::Right, Orientation::Up) => {
                         // ```svgbob
                         //              o (fp)
                         //              ^
@@ -531,23 +531,23 @@ impl SVGRenderer<'_> {
                 let (x, y) = (to_pt.x, to_pt.y);
                 let width = 5.0 / 2.0;
                 let height = 7.0;
-                let points = match from_pt.vh_direction(to_pt) {
-                    Direction::Up => [
+                let points = match from_pt.orthogonal_direction(to_pt) {
+                    Orientation::Up => [
                         (x, y + circle_radius),
                         (x - width, y + height + circle_radius),
                         (x + width, y + height + circle_radius),
                     ],
-                    Direction::Down => [
+                    Orientation::Down => [
                         (x, y - circle_radius),
                         (x - width, y - height - circle_radius),
                         (x + width, y - height - circle_radius),
                     ],
-                    Direction::Left => [
+                    Orientation::Left => [
                         (x + circle_radius, y),
                         (x + height + circle_radius, y + width),
                         (x + height + circle_radius, y - width),
                     ],
-                    Direction::Right => [
+                    Orientation::Right => [
                         (x - circle_radius, y),
                         (x - height - circle_radius, y + width),
                         (x - height - circle_radius, y - width),

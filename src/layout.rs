@@ -3,7 +3,7 @@ use derive_more::{Add, Display};
 use smallvec::SmallVec;
 
 use crate::{
-    geometry::{Direction, Point, Size},
+    geometry::{Orientation, Point, Size},
     mir::{self, ConnectionPoint, ConnectionPointId, NodeKind},
 };
 use std::{
@@ -72,7 +72,7 @@ impl RouteGraph {
     pub fn add_connection_point(&mut self, connection_point: &ConnectionPoint) -> RouteNodeId {
         let node_id = self._add_node(
             connection_point.location().clone(),
-            Some(connection_point.direction().clone()),
+            Some(connection_point.orientation().clone()),
         );
 
         self.connection_points
@@ -80,22 +80,22 @@ impl RouteGraph {
         node_id
     }
 
-    fn _add_node(&mut self, location: Point, direction: Option<Direction>) -> RouteNodeId {
+    fn _add_node(&mut self, location: Point, orientation: Option<Orientation>) -> RouteNodeId {
         if let Some(pos) = self.nodes.iter().position(|n| *n.location() == location) {
-            if self.nodes[pos].direction() != direction {
+            if self.nodes[pos].orientation() != orientation {
                 panic!(
                     "[BUG] Placing node at {}, but the old node direction is different. {:?} != {}",
                     location,
                     self.nodes[pos]
-                        .direction()
+                        .orientation()
                         .map_or("(none)".into(), |x| x.to_string()),
-                    direction.map_or("(none)".into(), |x| x.to_string())
+                    orientation.map_or("(none)".into(), |x| x.to_string())
                 );
             }
             RouteNodeId(pos)
         } else {
             let node_id = RouteNodeId(self.nodes.len());
-            let node = RouteNode::new(node_id, location, direction);
+            let node = RouteNode::new(node_id, location, orientation);
 
             self.nodes.push(node);
             node_id
@@ -128,17 +128,17 @@ pub struct RouteNode {
     id: RouteNodeId,
     location: Point,
 
-    /// If the node is a connection point, copy its `direction` to
+    /// If the node is a connection point, copy its `orientation` to
     /// detect edge connectivity.
-    direction: Option<Direction>,
+    orientation: Option<Orientation>,
 }
 
 impl RouteNode {
-    pub fn new(id: RouteNodeId, location: Point, direction: Option<Direction>) -> Self {
+    pub fn new(id: RouteNodeId, location: Point, orientation: Option<Orientation>) -> Self {
         Self {
             id,
             location,
-            direction,
+            orientation,
         }
     }
 
@@ -150,13 +150,13 @@ impl RouteNode {
         &self.location
     }
 
-    pub fn direction(&self) -> Option<Direction> {
-        self.direction
+    pub fn orientation(&self) -> Option<Orientation> {
+        self.orientation
     }
 
     /// Returns `true` if `node.direction` is `None` or `direction`.
-    pub fn is_connectable(&self, direction: Direction) -> bool {
-        match self.direction {
+    pub fn is_connectable(&self, direction: Orientation) -> bool {
+        match self.orientation {
             None => true,
             Some(d) => d == direction,
         }
@@ -257,10 +257,10 @@ impl LayoutEngine for SimpleLayoutEngine {
             // In the case of a rectangle, connection points are placed in
             // the center of each of the four edges.
             for (x, y, d) in [
-                (record_rect.mid_x(), record_rect.min_y(), Direction::Up),
-                (record_rect.max_x(), record_rect.mid_y(), Direction::Right),
-                (record_rect.mid_x(), record_rect.max_y(), Direction::Down),
-                (record_rect.min_x(), record_rect.mid_y(), Direction::Left),
+                (record_rect.mid_x(), record_rect.min_y(), Orientation::Up),
+                (record_rect.max_x(), record_rect.mid_y(), Orientation::Right),
+                (record_rect.mid_x(), record_rect.max_y(), Orientation::Down),
+                (record_rect.min_x(), record_rect.mid_y(), Orientation::Left),
             ] {
                 record_node.append_connection_point(Point::new(x, y), d);
             }
@@ -279,33 +279,33 @@ impl LayoutEngine for SimpleLayoutEngine {
 
                 if field_id_vec.len() == 1 {
                     for (x, y, d) in [
-                        (field_rect.mid_x(), field_rect.min_y(), Direction::Up),
-                        (field_rect.max_x(), field_rect.mid_y(), Direction::Right),
-                        (field_rect.mid_x(), field_rect.max_y(), Direction::Down),
-                        (field_rect.min_x(), field_rect.mid_y(), Direction::Left),
+                        (field_rect.mid_x(), field_rect.min_y(), Orientation::Up),
+                        (field_rect.max_x(), field_rect.mid_y(), Orientation::Right),
+                        (field_rect.mid_x(), field_rect.max_y(), Orientation::Down),
+                        (field_rect.min_x(), field_rect.mid_y(), Orientation::Left),
                     ] {
                         field_node.append_connection_point(Point::new(x, y), d);
                     }
                 } else if field_index == 0 {
                     for (x, y, d) in [
-                        (field_rect.mid_x(), field_rect.min_y(), Direction::Up),
-                        (field_rect.max_x(), field_rect.mid_y(), Direction::Right),
-                        (field_rect.min_x(), field_rect.mid_y(), Direction::Left),
+                        (field_rect.mid_x(), field_rect.min_y(), Orientation::Up),
+                        (field_rect.max_x(), field_rect.mid_y(), Orientation::Right),
+                        (field_rect.min_x(), field_rect.mid_y(), Orientation::Left),
                     ] {
                         field_node.append_connection_point(Point::new(x, y), d);
                     }
                 } else if field_index == (field_id_vec.len() - 1) {
                     for (x, y, d) in [
-                        (field_rect.max_x(), field_rect.mid_y(), Direction::Right),
-                        (field_rect.mid_x(), field_rect.max_y(), Direction::Down),
-                        (field_rect.min_x(), field_rect.mid_y(), Direction::Left),
+                        (field_rect.max_x(), field_rect.mid_y(), Orientation::Right),
+                        (field_rect.mid_x(), field_rect.max_y(), Orientation::Down),
+                        (field_rect.min_x(), field_rect.mid_y(), Orientation::Left),
                     ] {
                         field_node.append_connection_point(Point::new(x, y), d);
                     }
                 } else {
                     for (x, y, d) in [
-                        (field_rect.max_x(), field_rect.mid_y(), Direction::Right),
-                        (field_rect.min_x(), field_rect.mid_y(), Direction::Left),
+                        (field_rect.max_x(), field_rect.mid_y(), Orientation::Right),
+                        (field_rect.min_x(), field_rect.mid_y(), Orientation::Left),
                     ] {
                         field_node.append_connection_point(Point::new(x, y), d);
                     }
@@ -494,8 +494,8 @@ impl SimpleLayoutEngine {
 
         let conn_pt = connection_point.location();
 
-        match connection_point.direction() {
-            Direction::Left => {
+        match connection_point.orientation() {
+            Orientation::Left => {
                 let mut min_x = 0.0f32;
                 let line_end = Point::new(f32::MIN, conn_pt.y);
 
@@ -511,7 +511,7 @@ impl SimpleLayoutEngine {
                     }
                 }
             }
-            Direction::Right => {
+            Orientation::Right => {
                 let mut max_x = f32::MAX;
                 let line_end = Point::new(f32::MAX, conn_pt.y);
 
@@ -527,7 +527,7 @@ impl SimpleLayoutEngine {
                     }
                 }
             }
-            Direction::Up => {
+            Orientation::Up => {
                 let mut max_y = f32::MAX;
                 let line_end = Point::new(conn_pt.x, f32::MAX);
 
@@ -543,7 +543,7 @@ impl SimpleLayoutEngine {
                     }
                 }
             }
-            Direction::Down => {
+            Orientation::Down => {
                 let mut min_y = 0.0f32;
                 let line_end = Point::new(conn_pt.x, f32::MIN);
 
@@ -642,7 +642,7 @@ impl SimpleLayoutEngine {
                     // ```
 
                     // Is connectable direction?
-                    if n.is_connectable(Direction::Up) && m.is_connectable(Direction::Down) {
+                    if n.is_connectable(Orientation::Up) && m.is_connectable(Orientation::Down) {
                         // Is nearest neighbor?
                         if up.is_none() || up.unwrap().location().y < q.y && no_collision() {
                             up.replace(m);
@@ -659,7 +659,7 @@ impl SimpleLayoutEngine {
                     // ```
 
                     // Is connectable direction?
-                    if n.is_connectable(Direction::Down) && m.is_connectable(Direction::Up) {
+                    if n.is_connectable(Orientation::Down) && m.is_connectable(Orientation::Up) {
                         // Is nearest neighbor?
                         if down.is_none() || down.unwrap().location().y > q.y && no_collision() {
                             down.replace(m);
@@ -673,7 +673,7 @@ impl SimpleLayoutEngine {
                     // ```
 
                     // Is connectable direction?
-                    if n.is_connectable(Direction::Left) && m.is_connectable(Direction::Right) {
+                    if n.is_connectable(Orientation::Left) && m.is_connectable(Orientation::Right) {
                         // Is nearest neighbor?
                         if left.is_none() || left.unwrap().location().x < q.x && no_collision() {
                             left.replace(m);
@@ -687,7 +687,7 @@ impl SimpleLayoutEngine {
                     // ```
 
                     // Is connectable direction?
-                    if n.is_connectable(Direction::Right) && m.is_connectable(Direction::Left) {
+                    if n.is_connectable(Orientation::Right) && m.is_connectable(Orientation::Left) {
                         // Is nearest neighbor?
                         if right.is_none() || right.unwrap().location().x > q.x && no_collision() {
                             right.replace(m);

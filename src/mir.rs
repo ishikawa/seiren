@@ -11,7 +11,7 @@
 //! | (0, 100)
 //! ```
 use crate::color::WebColor;
-use crate::geometry::{Direction, Point, Rect, Size};
+use crate::geometry::{Orientation, Point, Rect, Size};
 use derive_builder::Builder;
 use derive_more::Display;
 
@@ -76,7 +76,7 @@ impl Node {
     pub fn append_connection_point(
         &mut self,
         location: Point,
-        direction: Direction,
+        direction: Orientation,
     ) -> ConnectionPointId {
         let pid = ConnectionPointId(self.id, self.connection_points.len());
 
@@ -98,16 +98,16 @@ pub struct ConnectionPoint {
     id: ConnectionPointId,
     location: Point,
 
-    /// Indicates the direction in which the connection point can be connected
-    direction: Direction,
+    /// Angle at which incoming edges can incident to or outgoing edges can exit.
+    orientation: Orientation,
 }
 
 impl ConnectionPoint {
-    pub fn new(id: ConnectionPointId, location: Point, direction: Direction) -> Self {
+    pub fn new(id: ConnectionPointId, location: Point, orientation: Orientation) -> Self {
         Self {
             id,
             location,
-            direction,
+            orientation,
         }
     }
 
@@ -119,14 +119,10 @@ impl ConnectionPoint {
         &self.location
     }
 
-    pub fn direction(&self) -> Direction {
-        self.direction
+    pub fn orientation(&self) -> Orientation {
+        self.orientation
     }
 }
-
-/// 接続ポイントに接続できる方向を表す
-#[derive(Debug)]
-pub enum ConnectionPointDirection {}
 
 #[derive(Debug)]
 pub struct Document {

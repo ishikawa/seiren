@@ -2,7 +2,7 @@ use derive_more::Display;
 use smallvec::{smallvec, SmallVec};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
-pub enum Direction {
+pub enum Orientation {
     Up,
     Down,
     Left,
@@ -32,15 +32,15 @@ impl Point {
     }
 
     /// Returns the direction of a vertical or horizontal line.
-    pub fn vh_direction(&self, to: &Point) -> Direction {
+    pub fn orthogonal_direction(&self, to: &Point) -> Orientation {
         if to.x < self.x {
-            Direction::Left
+            Orientation::Left
         } else if to.x > self.x {
-            Direction::Right
+            Orientation::Right
         } else if to.y < self.y {
-            Direction::Up
+            Orientation::Up
         } else {
-            Direction::Down
+            Orientation::Down
         }
     }
 }
@@ -394,13 +394,25 @@ mod tests {
     }
 
     #[test]
-    fn point_vh_direction() {
+    fn point_orthogonal_direction() {
         let pt1 = Point::zero();
 
-        assert_eq!(pt1.vh_direction(&Point::new(-1.0, 0.0)), Direction::Left);
-        assert_eq!(pt1.vh_direction(&Point::new(1.0, 0.0)), Direction::Right);
-        assert_eq!(pt1.vh_direction(&Point::new(0.0, -1.0)), Direction::Up);
-        assert_eq!(pt1.vh_direction(&Point::new(0.0, 1.0)), Direction::Down);
+        assert_eq!(
+            pt1.orthogonal_direction(&Point::new(-1.0, 0.0)),
+            Orientation::Left
+        );
+        assert_eq!(
+            pt1.orthogonal_direction(&Point::new(1.0, 0.0)),
+            Orientation::Right
+        );
+        assert_eq!(
+            pt1.orthogonal_direction(&Point::new(0.0, -1.0)),
+            Orientation::Up
+        );
+        assert_eq!(
+            pt1.orthogonal_direction(&Point::new(0.0, 1.0)),
+            Orientation::Down
+        );
     }
 
     #[test]
