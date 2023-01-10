@@ -25,14 +25,14 @@ erd posts {
     created_by int FK    
   }
 
-  post_tags {
-    post_id int FK
-    tag_id  int FK
-  }
-
   tags {
     id   int PK
     name text
+  }
+
+  post_tags {
+    post_id int FK
+    tag_id  int FK
   }
 
   // Edges
