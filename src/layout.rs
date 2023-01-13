@@ -213,26 +213,36 @@ impl SimpleLayoutEngine {
 
 impl LayoutEngine for SimpleLayoutEngine {
     fn place_nodes(&mut self, doc: &mut mir::Document) {
-        let x = Self::ORIGIN.x;
-        let y = Self::ORIGIN.y;
+        // Grid
+        let n_columns = 3;
 
         // Iterate records
         let child_id_vec = doc.body().children().collect::<Vec<_>>();
 
+        let mut base_y = Self::ORIGIN.y;
+        let mut max_height = f32::MIN;
+
         for (record_index, child_id) in child_id_vec.iter().enumerate() {
+            if record_index > 0 && (record_index % n_columns == 0) {
+                // Move to next row.
+                base_y += max_height + Self::RECORD_SPACE;
+                max_height = f32::MIN;
+            }
+
             let Some(record_node) = doc.get_node_mut(child_id) else { continue };
             let NodeKind::Record(_) = record_node.kind() else  { continue };
 
-            let n_records = record_node.children().len() as f32;
-            let x = x + (Self::RECORD_WIDTH + Self::RECORD_SPACE) * record_index as f32;
+            let n_fields = record_node.children().len() as f32;
+            let x = Self::ORIGIN.x
+                + (Self::RECORD_WIDTH + Self::RECORD_SPACE) * (record_index % n_columns) as f32;
 
-            let record_height = Self::LINE_HEIGHT * n_records;
+            let record_height = Self::LINE_HEIGHT * n_fields;
+            max_height = record_height.max(max_height);
 
-            record_node.origin = Some(Point::new(x, y));
+            record_node.origin = Some(Point::new(x, base_y));
             record_node.size = Some(Size::new(Self::RECORD_WIDTH.into(), record_height.into()));
 
             // children
-            let base_y = y;
             let field_id_vec = record_node.children().collect::<Vec<_>>();
 
             for (field_index, field_node_id) in field_id_vec.iter().enumerate() {
