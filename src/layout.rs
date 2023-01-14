@@ -3,7 +3,7 @@ use derive_more::{Add, Display};
 use smallvec::SmallVec;
 
 use crate::{
-    geometry::{Orientation, Point, Size},
+    geometry::{Orientation, Point, Rect, Size},
     mir::{self, NodeKind, TerminalPort, TerminalPortId},
 };
 use std::{
@@ -15,7 +15,8 @@ pub trait LayoutEngine {
     /// Place all nodes on 2D coordination.
     ///
     /// The engine must assign `origin` and `size` of all nodes.
-    fn place_nodes(&mut self, doc: &mut mir::Document);
+    /// Returns computed view box.
+    fn place_nodes(&mut self, doc: &mut mir::Document) -> Option<Rect>;
 
     /// Place all terminal ports for every node.
     ///
@@ -200,10 +201,13 @@ impl SimpleLayoutEngine {
 }
 
 impl SimpleLayoutEngine {
-    const ORIGIN: Point = Point::new(50.0, 80.0);
+    const ORIGIN: Point = Point::new(50.0, 50.0);
     const LINE_HEIGHT: f32 = 35.0;
     const RECORD_WIDTH: f32 = 300.0;
     const RECORD_SPACE: f32 = 80.0;
+
+    // The number of columns in fixed grid.
+    const GRID_N_COLUMNS: usize = 3;
 
     // for debug
     pub fn edge_route_graph(&self) -> &RouteGraph {
@@ -212,9 +216,9 @@ impl SimpleLayoutEngine {
 }
 
 impl LayoutEngine for SimpleLayoutEngine {
-    fn place_nodes(&mut self, doc: &mut mir::Document) {
+    fn place_nodes(&mut self, doc: &mut mir::Document) -> Option<Rect> {
         // Grid
-        let n_columns = 3;
+        let n_columns = Self::GRID_N_COLUMNS;
 
         // Iterate records
         let child_id_vec = doc.body().children().collect::<Vec<_>>();
@@ -254,6 +258,14 @@ impl LayoutEngine for SimpleLayoutEngine {
                 field_node.size = Some(Size::new(Self::RECORD_WIDTH, Self::LINE_HEIGHT));
             }
         }
+
+        // Compute view box
+        let min_width = (Self::ORIGIN.x * 2.0) // x-margin
+            + ((n_columns as f32) * Self::RECORD_WIDTH) // shape width
+            + (((n_columns - 1) as f32) * Self::RECORD_SPACE); // spaces
+        let min_height = base_y + max_height + Self::ORIGIN.y;
+
+        Some(Rect::new(Point::zero(), Size::new(min_width, min_height)))
     }
 
     fn place_terminal_ports(&mut self, doc: &mut mir::Document) {

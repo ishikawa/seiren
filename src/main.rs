@@ -110,11 +110,13 @@ fn main() -> Result<(), io::Error> {
         let mut doc = ast.into_mir();
         let mut engine = SimpleLayoutEngine::new();
 
-        engine.place_nodes(&mut doc);
+        let view_box = engine.place_nodes(&mut doc);
+
         engine.place_terminal_ports(&mut doc);
         engine.draw_edge_path(&mut doc);
 
         let mut backend = SVGRenderer::new();
+        backend.view_box = view_box;
 
         if DEBUG {
             backend.edge_route_graph = Some(engine.edge_route_graph());
