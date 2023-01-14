@@ -35,7 +35,7 @@ impl Renderer for SVGRenderer<'_> {
         let background_color = WebColor::RGB(RGBColor::new(28, 28, 28));
 
         // -- Build a SVG document
-        let mut svg_doc = svg::Document::new().set("version", "1.1");
+        let mut svg_doc = svg::Document::new();
         let mut svg_defs = element::Definitions::new();
 
         // -- Background
