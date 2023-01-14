@@ -624,7 +624,7 @@ impl SVGRenderer<'_> {
                     .set("stroke", "white")
                     .set("stroke-width", 1)
                     .set("fill", "orange");
-                svg_doc = svg_doc.add(circle);
+                svg_doc.append(circle);
             }
         }
 
@@ -643,7 +643,7 @@ impl SVGRenderer<'_> {
                 .set("font-size", 12)
                 .set("font-family", "monospace")
                 .add(svg::node::Text::new(id.to_string()));
-            svg_doc = svg_doc.add(label);
+            svg_doc.append(label);
         }
 
         svg_doc

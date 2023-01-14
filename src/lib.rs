@@ -6,6 +6,7 @@ pub mod layout;
 pub mod mir;
 pub mod parser;
 pub mod renderer;
+pub mod evcxr;
 
 #[cfg(test)]
 mod tests {
@@ -37,7 +38,7 @@ mod tests {
 
         assert_diff!(
             svg.as_str(), 
-            "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\">\n<rect fill=\"#1C1C1C\" height=\"100%\" width=\"100%\"/>\n<defs/>\n</svg>", 
+            "<svg xmlns=\"http://www.w3.org/2000/svg\">\n<rect fill=\"#1C1C1C\" height=\"100%\" width=\"100%\"/>\n<defs/>\n</svg>", 
             "\n",
             0);
     }
@@ -127,7 +128,7 @@ mod tests {
             .expect("cannot generate SVG");
 
         let svg = String::from_utf8(bytes).unwrap();
-        assert_diff!(svg.as_str(), "<svg version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\">
+        assert_diff!(svg.as_str(), "<svg xmlns=\"http://www.w3.org/2000/svg\">
 <rect fill=\"#1C1C1C\" height=\"100%\" width=\"100%\"/>
 <defs>
 <clipPath id=\"record-clip-path-0\">
@@ -269,11 +270,13 @@ FK
             let mut doc = ast.unwrap().into_mir();
             let mut engine = SimpleLayoutEngine::new();
 
-            engine.place_nodes(&mut doc);
+            let view_box = engine.place_nodes(&mut doc);
             engine.place_terminal_ports(&mut doc);
             engine.draw_edge_path(&mut doc);
 
-            let backend = SVGRenderer::new();
+            let mut backend = SVGRenderer::new();
+            backend.view_box = view_box;
+
             let mut bytes: Vec<u8> = vec![];
     
             backend

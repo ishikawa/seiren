@@ -201,7 +201,7 @@ impl SimpleLayoutEngine {
 }
 
 impl SimpleLayoutEngine {
-    const ORIGIN: Point = Point::new(50.0, 50.0);
+    const ORIGIN: Point = Point::new(50.0, 80.0);
     const LINE_HEIGHT: f32 = 35.0;
     const RECORD_WIDTH: f32 = 300.0;
     const RECORD_SPACE: f32 = 80.0;
