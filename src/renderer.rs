@@ -2,12 +2,12 @@
 use crate::{
     color::{RGBColor, WebColor},
     error::BackendError,
-    geometry::{Orientation, Point},
+    geometry::{Orientation, Point, Rect},
     layout::RouteGraph,
     mir,
 };
 use std::io::Write;
-use svg::node::element;
+use svg::{node::element, Node};
 
 pub trait Renderer {
     fn render(&self, doc: &mir::Document, writer: &mut impl Write) -> Result<(), BackendError>;
@@ -15,6 +15,9 @@ pub trait Renderer {
 
 #[derive(Debug)]
 pub struct SVGRenderer<'g> {
+    // SVG viewBox
+    pub view_box: Option<Rect>,
+
     // for debug
     pub edge_route_graph: Option<&'g RouteGraph>,
 }
@@ -22,6 +25,7 @@ pub struct SVGRenderer<'g> {
 impl SVGRenderer<'_> {
     pub fn new() -> Self {
         Self {
+            view_box: None,
             edge_route_graph: None,
         }
     }
@@ -35,8 +39,21 @@ impl Renderer for SVGRenderer<'_> {
         let background_color = WebColor::RGB(RGBColor::new(28, 28, 28));
 
         // -- Build a SVG document
-        let mut svg_doc = svg::Document::new().set("version", "1.1");
+        let mut svg_doc = svg::Document::new();
         let mut svg_defs = element::Definitions::new();
+
+        if let Some(view_box) = self.view_box {
+            svg_doc.assign(
+                "viewBox",
+                format!(
+                    "{}, {}, {}, {}",
+                    view_box.min_x(),
+                    view_box.min_y(),
+                    view_box.width(),
+                    view_box.height()
+                ),
+            );
+        }
 
         // -- Background
         let background_rect = element::Rectangle::new()
@@ -44,7 +61,7 @@ impl Renderer for SVGRenderer<'_> {
             .set("height", "100%")
             .set("fill", background_color.to_string());
 
-        svg_doc = svg_doc.add(background_rect);
+        svg_doc.append(background_rect);
 
         // -- Generate clip paths for record shapes.
         for (record_index, child_id) in doc.body().children().enumerate() {
@@ -65,9 +82,9 @@ impl Renderer for SVGRenderer<'_> {
             let id = format!("{}{}", record_clip_path_id_prefix, record_index);
             let clip_path = element::ClipPath::new().set("id", id).add(clip_path_rect);
 
-            svg_defs = svg_defs.add(clip_path);
+            svg_defs.append(clip_path);
         }
-        svg_doc = svg_doc.add(svg_defs);
+        svg_doc.append(svg_defs);
 
         // -- Draw shapes
         for (record_index, child_id) in doc.body().children().enumerate() {
@@ -85,12 +102,12 @@ impl Renderer for SVGRenderer<'_> {
                 .set("rx", border_radius)
                 .set("ry", border_radius);
             if let Some(border_color) = &record.border_color {
-                table_bg = table_bg.set("stroke", border_color.to_string());
+                table_bg.assign("stroke", border_color.to_string());
             }
             if let Some(bg_color) = &record.bg_color {
-                table_bg = table_bg.set("fill", bg_color.to_string());
+                table_bg.assign("fill", bg_color.to_string());
             }
-            svg_doc = svg_doc.add(table_bg);
+            svg_doc.append(table_bg);
 
             // children
             let record_clip_path_id = format!("{}{}", record_clip_path_id_prefix, record_index);
@@ -112,7 +129,7 @@ impl Renderer for SVGRenderer<'_> {
                         .set("height", field_rect.height())
                         .set("fill", bg_color.to_string())
                         .set("clip-path", format!("url(#{})", record_clip_path_id));
-                    svg_doc = svg_doc.add(field_bg);
+                    svg_doc.append(field_bg);
                 }
 
                 // border
@@ -127,7 +144,7 @@ impl Renderer for SVGRenderer<'_> {
                             .set("stroke", border_color.to_string())
                             .set("stroke-width", 1);
                     }
-                    svg_doc = svg_doc.add(line);
+                    svg_doc.append(line);
                 }
 
                 // Renders text elements
@@ -146,7 +163,7 @@ impl Renderer for SVGRenderer<'_> {
                     Point::new(x + px, field_rect.mid_y()),
                     Some(SVGAnchor::Start),
                 );
-                svg_doc = svg_doc.add(text_element);
+                svg_doc.append(text_element);
 
                 // subtitle
                 if let Some(subtitle) = &field.subtitle {
@@ -155,7 +172,7 @@ impl Renderer for SVGRenderer<'_> {
                         Point::new(x + column_width * 4.0, field_rect.mid_y()),
                         Some(SVGAnchor::End),
                     );
-                    svg_doc = svg_doc.add(text_element);
+                    svg_doc.append(text_element);
                 }
 
                 // badge
@@ -170,7 +187,7 @@ impl Renderer for SVGRenderer<'_> {
                             .set("cy", cy)
                             .set("r", bg_radius)
                             .set("fill", bg_color.to_string());
-                        svg_doc = svg_doc.add(bg_element);
+                        svg_doc.append(bg_element);
                     }
 
                     let text_element = self.draw_text(
@@ -178,7 +195,7 @@ impl Renderer for SVGRenderer<'_> {
                         Point::new(rx - bg_radius, cy),
                         Some(SVGAnchor::Middle),
                     );
-                    svg_doc = svg_doc.add(text_element);
+                    svg_doc.append(text_element);
                 }
             }
         }
@@ -607,7 +624,7 @@ impl SVGRenderer<'_> {
                     .set("stroke", "white")
                     .set("stroke-width", 1)
                     .set("fill", "orange");
-                svg_doc = svg_doc.add(circle);
+                svg_doc.append(circle);
             }
         }
 
@@ -626,7 +643,7 @@ impl SVGRenderer<'_> {
                 .set("font-size", 12)
                 .set("font-family", "monospace")
                 .add(svg::node::Text::new(id.to_string()));
-            svg_doc = svg_doc.add(label);
+            svg_doc.append(label);
         }
 
         svg_doc

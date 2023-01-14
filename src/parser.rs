@@ -71,7 +71,9 @@ pub enum Token {
     Newline,
 }
 
-pub fn parse(src: &str) -> (Option<Module>, Vec<Simple<char>>, Vec<Simple<Token>>) {
+pub type ParseResult = (Option<Module>, Vec<Simple<char>>, Vec<Simple<Token>>);
+
+pub fn parse(src: &str) -> ParseResult {
     let (tokens, errs) = tokenizer().parse_recovery(src);
 
     if let Some(tokens) = tokens {
