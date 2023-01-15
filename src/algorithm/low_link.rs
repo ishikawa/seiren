@@ -137,8 +137,6 @@ mod tests {
 
         low_link.traverse(&g);
 
-        println!("Low Link = {:?}", low_link);
-
         assert_eq!(low_link.articulations.len(), 1);
         assert_eq!(low_link.articulations[0], v5);
         assert_eq!(low_link.bridges.len(), 1);
