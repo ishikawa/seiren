@@ -61,7 +61,7 @@ impl Module {
                             .font_weight(Some(mir::FontWeight::Bold))
                             .build()
                             .unwrap();
-                        let field = mir::FieldNodeBuilder::default()
+                        let field = mir::FieldShapeBuilder::default()
                             .title(name)
                             .bg_color(Some(light_gray_color.clone()))
                             .build()
@@ -69,7 +69,7 @@ impl Module {
 
                         doc.create_field(field)
                     };
-                    let record = mir::RecordNodeBuilder::default()
+                    let record = mir::RecordShapeBuilder::default()
                         .rounded(true)
                         .bg_color(Some(table_bg_color.clone()))
                         .border_color(Some(table_border_color.clone()))
@@ -96,7 +96,7 @@ impl Module {
                                 .build()
                                 .unwrap();
 
-                            let field_node = mir::FieldNodeBuilder::default()
+                            let field_node = mir::FieldShapeBuilder::default()
                                 .title(name)
                                 .subtitle(Some(column_type))
                                 .border_color(Some(table_border_color.clone()))

@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 
 use crate::{
     geometry::{Orientation, Point, Rect, Size},
-    mir::{self, NodeKind, TerminalPort, TerminalPortId},
+    mir::{self, ShapeKind, TerminalPort, TerminalPortId},
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -234,7 +234,7 @@ impl LayoutEngine for SimpleLayoutEngine {
             }
 
             let Some(record_node) = doc.get_node_mut(child_id) else { continue };
-            let NodeKind::Record(_) = record_node.kind() else  { continue };
+            let ShapeKind::Record(_) = record_node.kind() else  { continue };
 
             let n_fields = record_node.children().len() as f32;
             let x = Self::ORIGIN.x
@@ -252,7 +252,7 @@ impl LayoutEngine for SimpleLayoutEngine {
             for (field_index, field_node_id) in field_id_vec.iter().enumerate() {
                 let y = base_y + Self::LINE_HEIGHT * field_index as f32;
                 let Some(field_node) = doc.get_node_mut(field_node_id) else { continue };
-                let NodeKind::Field(_) = field_node.kind() else  { continue };
+                let ShapeKind::Field(_) = field_node.kind() else  { continue };
 
                 field_node.origin = Some(Point::new(x, y));
                 field_node.size = Some(Size::new(Self::RECORD_WIDTH, Self::LINE_HEIGHT));

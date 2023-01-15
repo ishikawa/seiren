@@ -32,12 +32,14 @@ pub struct Node {
 
     /// Points to which edges can be connected.
     terminal_ports: Vec<TerminalPort>,
-    kind: NodeKind,
+    kind: ShapeKind,
+
+    /// For container shapes.
     children: Vec<NodeId>,
 }
 
 impl Node {
-    pub fn new(id: NodeId, kind: NodeKind) -> Self {
+    pub fn new(id: NodeId, kind: ShapeKind) -> Self {
         Self {
             id,
             kind,
@@ -48,7 +50,7 @@ impl Node {
         }
     }
 
-    pub fn kind(&self) -> &NodeKind {
+    pub fn kind(&self) -> &ShapeKind {
         &self.kind
     }
 
@@ -87,10 +89,10 @@ impl Node {
 }
 
 #[derive(Debug)]
-pub enum NodeKind {
-    Body(BodyNode),
-    Record(RecordNode),
-    Field(FieldNode),
+pub enum ShapeKind {
+    Body(BodyShape),
+    Record(RecordShape),
+    Field(FieldShape),
 }
 
 #[derive(Debug, Clone)]
@@ -133,7 +135,7 @@ pub struct Document {
 impl Document {
     pub fn new() -> Self {
         let node_id = NodeId(0);
-        let node = Node::new(node_id, NodeKind::Body(BodyNode::default()));
+        let node = Node::new(node_id, ShapeKind::Body(BodyShape::default()));
 
         Self {
             nodes: vec![node],
@@ -161,19 +163,19 @@ impl Document {
 
     // -- Create a node
 
-    pub fn create_record(&mut self, record: RecordNode) -> NodeId {
+    pub fn create_record(&mut self, record: RecordShape) -> NodeId {
         let index = self.nodes.len();
         let node_id = NodeId(index);
-        let node = Node::new(node_id, NodeKind::Record(record));
+        let node = Node::new(node_id, ShapeKind::Record(record));
 
         self.nodes.push(node);
         node_id
     }
 
-    pub fn create_field(&mut self, field: FieldNode) -> NodeId {
+    pub fn create_field(&mut self, field: FieldShape) -> NodeId {
         let index = self.nodes.len();
         let node_id = NodeId(index);
-        let node = Node::new(node_id, NodeKind::Field(field));
+        let node = Node::new(node_id, ShapeKind::Field(field));
 
         self.nodes.push(node);
         node_id
@@ -196,11 +198,11 @@ impl Document {
 
 #[derive(Debug, Clone, Default, Builder)]
 #[builder(default)]
-pub struct BodyNode {}
+pub struct BodyShape {}
 
 #[derive(Debug, Clone, Default, Builder)]
 #[builder(default)]
-pub struct RecordNode {
+pub struct RecordShape {
     pub rounded: bool,
     pub bg_color: Option<WebColor>,
     pub border_color: Option<WebColor>,
@@ -208,7 +210,7 @@ pub struct RecordNode {
 
 #[derive(Debug, Clone, Default, Builder)]
 #[builder(default)]
-pub struct FieldNode {
+pub struct FieldShape {
     pub title: TextSpan,
     pub subtitle: Option<TextSpan>,
     pub badge: Option<Badge>,
@@ -334,7 +336,7 @@ mod tests {
         let mut doc = Document::new();
 
         let title = TextSpanBuilder::default().text("id").build().unwrap();
-        let field = FieldNodeBuilder::default().title(title).build().unwrap();
+        let field = FieldShapeBuilder::default().title(title).build().unwrap();
 
         let node_id = doc.create_field(field);
 
@@ -342,20 +344,20 @@ mod tests {
         assert!(node.is_some());
 
         let node = node.unwrap();
-        let NodeKind::Field(field) = &node.kind else { panic!() };
+        let ShapeKind::Field(field) = &node.kind else { panic!() };
 
         assert_eq!(field.title.text, "id");
 
         // mutate
         {
             let node = doc.get_node_mut(&node_id).unwrap();
-            let NodeKind::Field(field) = &mut node.kind else { panic!() };
+            let ShapeKind::Field(field) = &mut node.kind else { panic!() };
 
             field.title.text = "uuid".to_string();
         }
 
         let node = doc.get_node(&node_id).unwrap();
-        let NodeKind::Field(field) = &node.kind else { panic!() };
+        let ShapeKind::Field(field) = &node.kind else { panic!() };
 
         assert_eq!(field.title.text, "uuid");
     }

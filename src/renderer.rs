@@ -66,7 +66,7 @@ impl Renderer for SVGRenderer<'_> {
         // -- Generate clip paths for record shapes.
         for (record_index, child_id) in doc.body().children().enumerate() {
             let Some(record_node) = doc.get_node(&child_id) else { continue };
-            let mir::NodeKind::Record(_) = record_node.kind() else  { continue };
+            let mir::ShapeKind::Record(_) = record_node.kind() else  { continue };
 
             let Some(record_origin) = record_node.origin else { return Err(BackendError::InvalidLayout(child_id)) };
             let Some(record_size) = record_node.size else { return Err(BackendError::InvalidLayout(child_id)) };
@@ -89,7 +89,7 @@ impl Renderer for SVGRenderer<'_> {
         // -- Draw shapes
         for (record_index, child_id) in doc.body().children().enumerate() {
             let Some(record_node) = doc.get_node(&child_id) else { continue };
-            let mir::NodeKind::Record(record) = record_node.kind() else  { continue };
+            let mir::ShapeKind::Record(record) = record_node.kind() else  { continue };
             let Some(record_origin) = record_node.origin else { return Err(BackendError::InvalidLayout(child_id)) };
             let Some(record_size) = record_node.size else { return Err(BackendError::InvalidLayout(child_id)) };
 
@@ -114,7 +114,7 @@ impl Renderer for SVGRenderer<'_> {
 
             for (field_index, field_node_id) in record_node.children().enumerate() {
                 let Some(field_node) = doc.get_node(&field_node_id) else { continue };
-                let mir::NodeKind::Field(field) = field_node.kind() else  { continue };
+                let mir::ShapeKind::Field(field) = field_node.kind() else  { continue };
                 let Some(field_rect) = field_node.rect() else { return Err(BackendError::InvalidLayout(field_node_id)) };
 
                 let x = field_rect.min_x();
