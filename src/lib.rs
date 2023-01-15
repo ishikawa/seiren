@@ -1,3 +1,4 @@
+pub mod algorithm;
 pub mod color;
 pub mod erd;
 pub mod error;
