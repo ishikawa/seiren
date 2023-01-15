@@ -175,7 +175,7 @@ impl TerminalPort {
     }
 }
 
-pub type DocumentGraph = UnGraph<NodeData, EdgeData>;
+type DocumentGraph = UnGraph<NodeData, EdgeData>;
 
 #[derive(Debug)]
 pub struct Document {

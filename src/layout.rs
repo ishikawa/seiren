@@ -3,10 +3,15 @@ use crate::{
     geometry::{Orientation, Point, Rect, Size},
     mir::{self, ShapeKind, TerminalPort, TerminalPortId},
 };
-use derive_more::{Add, Display};
-use smallvec::SmallVec;
+use derive_more::Add;
+use petgraph::algo;
+use petgraph::{
+    prelude::{EdgeIndex, NodeIndex, UnGraph},
+    visit::EdgeRef,
+};
 use std::{
     collections::{HashMap, VecDeque},
+    fmt,
     hash::Hash,
 };
 
@@ -28,41 +33,41 @@ pub trait LayoutEngine {
     fn draw_edge_path(&mut self, doc: &mut mir::Document);
 }
 
+type _RouteGraph = UnGraph<RouteNodeData, RouteEdgeData>;
+
 /// Represents routes in a place by graph. Every junction of two edges will be a node of the graph.
 /// Neighboring junctions are connected by edges. Each nodes neighbors four other nodes and each
 /// edge is NOT directed so shared by two junctions.
 #[derive(Debug, Clone)]
 pub struct RouteGraph {
-    nodes: Vec<RouteNode>,
-
-    // We use adjacency list as our primary data structure to represent graphs because a graph is
-    // relatively sparse.
-    edges: HashMap<RouteNodeId, Vec<RouteEdge>>,
-
+    graph: _RouteGraph,
     terminal_ports: HashMap<TerminalPortId, RouteNodeId>,
 }
 
 impl RouteGraph {
     pub fn new() -> Self {
+        let graph = _RouteGraph::new_undirected();
+
         Self {
-            nodes: vec![],
-            edges: HashMap::new(),
+            graph,
             terminal_ports: HashMap::new(),
         }
     }
 
-    pub fn nodes(&self) -> impl ExactSizeIterator<Item = &RouteNode> {
-        self.nodes.iter()
+    pub fn nodes(&self) -> impl Iterator<Item = &RouteNodeData> {
+        self.graph.node_weights()
     }
 
-    pub fn get_node(&self, id: RouteNodeId) -> Option<&RouteNode> {
-        self.nodes.get(id.0)
+    pub fn node_ids(&self) -> impl ExactSizeIterator<Item = RouteNodeId> {
+        self.graph.node_indices().map(|i| RouteNodeId(i))
     }
 
-    pub fn get_terminal_port(&self, id: TerminalPortId) -> Option<&RouteNode> {
-        self.terminal_ports
-            .get(&id)
-            .and_then(|node_index| self.get_node(*node_index))
+    pub fn get_node(&self, id: RouteNodeId) -> Option<&RouteNodeData> {
+        self.graph.node_weight(id.0)
+    }
+
+    pub fn get_terminal_port(&self, id: TerminalPortId) -> Option<RouteNodeId> {
+        self.terminal_ports.get(&id).copied()
     }
 
     pub fn add_node(&mut self, location: Point) -> RouteNodeId {
@@ -80,54 +85,75 @@ impl RouteGraph {
     }
 
     fn _add_node(&mut self, location: Point, orientation: Option<Orientation>) -> RouteNodeId {
-        if let Some(pos) = self.nodes.iter().position(|n| *n.location() == location) {
-            if self.nodes[pos].orientation() != orientation {
+        let node_index = if let Some((node_index, node)) = self
+            .graph
+            .node_indices()
+            .flat_map(|i| self.graph.node_weight(i).map(|w| (i, w)))
+            .find(|(_, w)| *w.location() == location)
+        {
+            if node.orientation() != orientation {
                 panic!(
                     "[BUG] Placing node at {}, but the old node orientation is different. {:?} != {}",
                     location,
-                    self.nodes[pos]
+                    node
                         .orientation()
                         .map_or("(none)".into(), |x| x.to_string()),
                     orientation.map_or("(none)".into(), |x| x.to_string())
                 );
             }
-            RouteNodeId(pos)
-        } else {
-            let node_index = RouteNodeId(self.nodes.len());
-            let node = RouteNode::new(node_index, location, orientation);
-
-            self.nodes.push(node);
             node_index
-        }
+        } else {
+            let node = RouteNodeData::new(location, orientation);
+            self.graph.add_node(node)
+        };
+
+        RouteNodeId(node_index)
     }
 
-    pub fn edges(
-        &self,
-        node_index: RouteNodeId,
-    ) -> Option<impl ExactSizeIterator<Item = &RouteEdge>> {
-        self.edges.get(&node_index).map(|x| x.iter())
+    pub fn edge_endpoints(&self, edge_id: RouteEdgeId) -> Option<(RouteNodeId, RouteNodeId)> {
+        self.graph
+            .edge_endpoints(edge_id.0)
+            .map(|(x, y)| (RouteNodeId(x), RouteNodeId(y)))
+    }
+
+    pub fn edges(&self) -> impl Iterator<Item = &RouteEdgeData> {
+        self.graph.edge_weights()
+    }
+
+    pub fn edges_mut(&mut self) -> impl Iterator<Item = &mut RouteEdgeData> {
+        self.graph.edge_weights_mut()
     }
 
     pub fn add_edge(&mut self, a: RouteNodeId, b: RouteNodeId) {
         for (from, to) in [(a, b)] {
-            self.edges
-                .entry(from)
-                .and_modify(|v| {
-                    if !v.iter().any(|e| e.dest == to) {
-                        v.push(RouteEdge::new(to));
-                    }
-                })
-                .or_insert(vec![RouteEdge::new(to)]);
+            if !self.graph.edges(from.0).any(|e| e.target() == to.0) {
+                self.graph
+                    .add_edge(from.0, to.0, RouteEdgeData::new(from, to));
+            }
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
-pub struct RouteNodeId(usize);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct RouteNodeId(NodeIndex);
+
+impl fmt::Display for RouteNodeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.index())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct RouteEdgeId(EdgeIndex);
+
+impl fmt::Display for RouteEdgeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.index())
+    }
+}
 
 #[derive(Debug, Clone)]
-pub struct RouteNode {
-    id: RouteNodeId,
+pub struct RouteNodeData {
     location: Point,
 
     /// If the node is a terminal port, copy its `orientation` to
@@ -135,17 +161,12 @@ pub struct RouteNode {
     orientation: Option<Orientation>,
 }
 
-impl RouteNode {
-    pub fn new(id: RouteNodeId, location: Point, orientation: Option<Orientation>) -> Self {
+impl RouteNodeData {
+    pub fn new(location: Point, orientation: Option<Orientation>) -> Self {
         Self {
-            id,
             location,
             orientation,
         }
-    }
-
-    pub fn id(&self) -> RouteNodeId {
-        self.id
     }
 
     pub fn location(&self) -> &Point {
@@ -166,17 +187,25 @@ impl RouteNode {
 }
 
 #[derive(Debug, Clone)]
-pub struct RouteEdge {
-    dest: RouteNodeId,
+pub struct RouteEdgeData {
+    source_id: RouteNodeId,
+    target_id: RouteNodeId,
 }
 
-impl RouteEdge {
-    pub fn new(dest: RouteNodeId) -> Self {
-        Self { dest }
+impl RouteEdgeData {
+    pub fn new(source_id: RouteNodeId, target_id: RouteNodeId) -> Self {
+        Self {
+            source_id,
+            target_id,
+        }
     }
 
-    pub fn dest(&self) -> RouteNodeId {
-        self.dest
+    pub fn source_id(&self) -> RouteNodeId {
+        self.source_id
+    }
+
+    pub fn target_id(&self) -> RouteNodeId {
+        self.target_id
     }
 }
 
@@ -644,13 +673,15 @@ impl SimpleLayoutEngine {
             })
             .collect::<Vec<_>>();
 
-        for n in self.edge_route_graph.nodes() {
-            let mut left: Option<&RouteNode> = None;
-            let mut right: Option<&RouteNode> = None;
-            let mut up: Option<&RouteNode> = None;
-            let mut down: Option<&RouteNode> = None;
+        for a in self.edge_route_graph.node_ids() {
+            let mut left: Option<(RouteNodeId, &RouteNodeData)> = None;
+            let mut right: Option<(RouteNodeId, &RouteNodeData)> = None;
+            let mut up: Option<(RouteNodeId, &RouteNodeData)> = None;
+            let mut down: Option<(RouteNodeId, &RouteNodeData)> = None;
 
-            for m in self.edge_route_graph.nodes() {
+            for b in self.edge_route_graph.node_ids() {
+                let n = self.edge_route_graph.get_node(a).unwrap();
+                let m = self.edge_route_graph.get_node(b).unwrap();
                 let p = n.location();
                 let q = m.location();
                 let no_collision = || !shape_rects.iter().any(|(_, r)| r.intersects_line(p, q));
@@ -668,8 +699,8 @@ impl SimpleLayoutEngine {
                     // Is connectable direction?
                     if n.is_connectable(Orientation::Up) && m.is_connectable(Orientation::Down) {
                         // Is nearest neighbor?
-                        if up.is_none() || up.unwrap().location().y < q.y && no_collision() {
-                            up.replace(m);
+                        if up.is_none() || up.unwrap().1.location().y < q.y && no_collision() {
+                            up.replace((b, m));
                         }
                     }
                 } else if q.x == p.x && q.y > p.y {
@@ -685,8 +716,8 @@ impl SimpleLayoutEngine {
                     // Is connectable direction?
                     if n.is_connectable(Orientation::Down) && m.is_connectable(Orientation::Up) {
                         // Is nearest neighbor?
-                        if down.is_none() || down.unwrap().location().y > q.y && no_collision() {
-                            down.replace(m);
+                        if down.is_none() || down.unwrap().1.location().y > q.y && no_collision() {
+                            down.replace((b, m));
                         }
                     }
                 } else if q.y == p.y && q.x < p.x {
@@ -699,8 +730,8 @@ impl SimpleLayoutEngine {
                     // Is connectable direction?
                     if n.is_connectable(Orientation::Left) && m.is_connectable(Orientation::Right) {
                         // Is nearest neighbor?
-                        if left.is_none() || left.unwrap().location().x < q.x && no_collision() {
-                            left.replace(m);
+                        if left.is_none() || left.unwrap().1.location().x < q.x && no_collision() {
+                            left.replace((b, m));
                         }
                     }
                 } else if q.y == p.y && q.x > p.x {
@@ -713,8 +744,9 @@ impl SimpleLayoutEngine {
                     // Is connectable direction?
                     if n.is_connectable(Orientation::Right) && m.is_connectable(Orientation::Left) {
                         // Is nearest neighbor?
-                        if right.is_none() || right.unwrap().location().x > q.x && no_collision() {
-                            right.replace(m);
+                        if right.is_none() || right.unwrap().1.location().x > q.x && no_collision()
+                        {
+                            right.replace((b, m));
                         }
                     }
                 }
@@ -722,7 +754,7 @@ impl SimpleLayoutEngine {
 
             for dest in [left, right, up, down] {
                 let Some(dest) = dest else { continue } ;
-                edges.push((n.id(), dest.id()));
+                edges.push((a, dest.0));
             }
         }
 
@@ -748,7 +780,7 @@ impl SimpleLayoutEngine {
         let Some(end_node) = doc.get_node(target_id) else { return None };
 
         let mut cost = RouteCost::MAX;
-        let mut path: Option<Vec<Point>> = None;
+        let mut path: Option<Vec<RouteNodeId>> = None;
 
         for src in start_node.terminal_ports() {
             for dst in end_node.terminal_ports() {
@@ -763,92 +795,37 @@ impl SimpleLayoutEngine {
             }
         }
 
-        path
+        path.map(|path| {
+            path.iter()
+                .copied()
+                .map(|id| self.edge_route_graph().get_node(id).unwrap().location())
+                .copied()
+                .collect()
+        })
     }
-
-    const COMPUTE_SHORTEST_PATH_INLINE_BUFFER: usize = 128;
 
     /// Run Dijkstra's algorithm to compute the shortest path between `start_node` and `end_node`.
     fn compute_shortest_path(
         &self,
-        start_node: &RouteNode,
-        end_node: &RouteNode,
-    ) -> (RouteCost, Vec<Point>) {
+        start_node: RouteNodeId,
+        end_node: RouteNodeId,
+    ) -> (RouteCost, Vec<RouteNodeId>) {
         let graph = self.edge_route_graph();
-        let n_nodes = graph.nodes().len();
 
-        // previous node in tracing the shortest path
-        let mut prev =
-            SmallVec::<[Option<RouteNodeId>; Self::COMPUTE_SHORTEST_PATH_INLINE_BUFFER]>::from_elem(
-                None, n_nodes,
-            );
+        let (cost, path) = algo::astar(
+            &graph.graph,
+            start_node.0,
+            |finish| finish == end_node.0,
+            |_| RouteCost(1),
+            |_| RouteCost(0),
+        )
+        .unwrap_or_else(|| {
+            panic!(
+                "can't compute shortest path: {} -> {}",
+                start_node, end_node
+            )
+        });
 
-        // is the node in the tree yet?
-        let mut in_tree = SmallVec::<[bool; Self::COMPUTE_SHORTEST_PATH_INLINE_BUFFER]>::from_elem(
-            false, n_nodes,
-        );
-        // const (distance) between `start_node` and any node.
-        let mut costs =
-            SmallVec::<[RouteCost; Self::COMPUTE_SHORTEST_PATH_INLINE_BUFFER]>::from_elem(
-                RouteCost::MAX,
-                n_nodes,
-            );
-
-        // NOTE: We decided to use internal representation to improve performance...
-        costs[start_node.id.0] = RouteCost(0);
-
-        let mut node_index = start_node.id();
-
-        while !in_tree[node_index.0] {
-            in_tree[node_index.0] = true;
-
-            if let (Some(node), Some(edges)) = (graph.get_node(node_index), graph.edges(node_index))
-            {
-                for edge in edges {
-                    let to_node_index = edge.dest();
-                    let Some(to_node) = graph.get_node(to_node_index) else { continue };
-
-                    // cost = int(distance)
-                    let distance = node.location().distance(to_node.location());
-                    let w = costs[node_index.0] + RouteCost(distance as u32);
-
-                    if costs[to_node_index.0] > w {
-                        costs[to_node_index.0] = w;
-                        prev[to_node_index.0] = Some(node_index);
-                    }
-                }
-            }
-
-            let mut d = RouteCost::MAX;
-            for i in 0..n_nodes {
-                if !in_tree[i] && d > costs[i] {
-                    d = costs[i];
-                    node_index = RouteNodeId(i);
-                }
-            }
-
-            // Completed?
-            if node_index == end_node.id() {
-                let mut i = node_index;
-                let mut path = vec![*graph.get_node(i).unwrap().location()];
-
-                while let Some(p) = prev[i.0] {
-                    path.push(*graph.get_node(p).unwrap().location());
-
-                    if p == start_node.id() {
-                        break;
-                    }
-                    i = p;
-                }
-                path.reverse();
-
-                return (costs[end_node.id().0], path);
-            }
-        }
-
-        unreachable!(
-            "can't compute shortest path: n = {}, tree = {:?}",
-            n_nodes, in_tree
-        );
+        (cost, path.iter().map(|i| RouteNodeId(*i)).collect())
     }
 }

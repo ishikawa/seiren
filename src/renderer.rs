@@ -528,70 +528,70 @@ impl SVGRenderer<'_> {
         let circle_radius = 4.0;
 
         // Draw route edges with direction
-        for junction in edge_route_graph.nodes() {
-            let Some(edges) = edge_route_graph.edges(junction.id()) else { continue };
-            let from_pt = junction.location();
+        for edge in edge_route_graph.edges() {
+            let Some(src) = edge_route_graph.get_node(edge.source_id()) else { continue };
+            let Some(dest) = edge_route_graph.get_node(edge.target_id()) else { continue };
 
-            for edge in edges {
-                let Some(dest) = edge_route_graph.get_node(edge.dest()) else { continue };
-                let to_pt = dest.location();
+            let from_pt = src.location();
+            let to_pt = dest.location();
 
-                let line = element::Line::new()
-                    .set("x1", from_pt.x)
-                    .set("y1", from_pt.y)
-                    .set("x2", to_pt.x)
-                    .set("y2", to_pt.y)
-                    .set("stroke", "red")
-                    .set("stroke-width", 1);
+            let line = element::Line::new()
+                .set("x1", from_pt.x)
+                .set("y1", from_pt.y)
+                .set("x2", to_pt.x)
+                .set("y2", to_pt.y)
+                .set("stroke", "red")
+                .set("stroke-width", 1);
 
-                // arrow
-                let (x, y) = (to_pt.x, to_pt.y);
-                let width = 5.0 / 2.0;
-                let height = 7.0;
-                let points = match from_pt.orthogonal_direction(to_pt) {
-                    Orientation::Up => [
-                        (x, y + circle_radius),
-                        (x - width, y + height + circle_radius),
-                        (x + width, y + height + circle_radius),
-                    ],
-                    Orientation::Down => [
-                        (x, y - circle_radius),
-                        (x - width, y - height - circle_radius),
-                        (x + width, y - height - circle_radius),
-                    ],
-                    Orientation::Left => [
-                        (x + circle_radius, y),
-                        (x + height + circle_radius, y + width),
-                        (x + height + circle_radius, y - width),
-                    ],
-                    Orientation::Right => [
-                        (x - circle_radius, y),
-                        (x - height - circle_radius, y + width),
-                        (x - height - circle_radius, y - width),
-                    ],
-                };
+            // arrow
+            let (x, y) = (to_pt.x, to_pt.y);
+            let width = 5.0 / 2.0;
+            let height = 7.0;
+            let points = match from_pt.orthogonal_direction(to_pt) {
+                Orientation::Up => [
+                    (x, y + circle_radius),
+                    (x - width, y + height + circle_radius),
+                    (x + width, y + height + circle_radius),
+                ],
+                Orientation::Down => [
+                    (x, y - circle_radius),
+                    (x - width, y - height - circle_radius),
+                    (x + width, y - height - circle_radius),
+                ],
+                Orientation::Left => [
+                    (x + circle_radius, y),
+                    (x + height + circle_radius, y + width),
+                    (x + height + circle_radius, y - width),
+                ],
+                Orientation::Right => [
+                    (x - circle_radius, y),
+                    (x - height - circle_radius, y + width),
+                    (x - height - circle_radius, y - width),
+                ],
+            };
 
+            points
+                .iter()
+                .map(|p| format!("{}, {}", p.0, p.1))
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            let arrow = element::Polygon::new().set("fill", "red").set(
+                "points",
                 points
                     .iter()
                     .map(|p| format!("{}, {}", p.0, p.1))
                     .collect::<Vec<_>>()
-                    .join(" ");
+                    .join(" "),
+            );
 
-                let arrow = element::Polygon::new().set("fill", "red").set(
-                    "points",
-                    points
-                        .iter()
-                        .map(|p| format!("{}, {}", p.0, p.1))
-                        .collect::<Vec<_>>()
-                        .join(" "),
-                );
-
-                svg_doc = svg_doc.add(line).add(arrow);
-            }
+            svg_doc.append(line);
+            svg_doc.append(arrow);
         }
 
         // Draw junction nodes
-        for junction in edge_route_graph.nodes() {
+        for junction_id in edge_route_graph.node_ids() {
+            let junction = edge_route_graph.get_node(junction_id).unwrap();
             let pt = junction.location();
             let circle = element::Circle::new()
                 .set("cx", pt.x)
@@ -607,7 +607,7 @@ impl SVGRenderer<'_> {
                 .set("fill", "white")
                 .set("font-size", 12)
                 .set("font-family", "monospace")
-                .add(svg::node::Text::new(junction.id().to_string()));
+                .add(svg::node::Text::new(junction_id.to_string()));
 
             svg_doc = svg_doc.add(circle).add(label);
         }

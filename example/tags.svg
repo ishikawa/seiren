@@ -231,12 +231,12 @@ FK
 <path d="M810 207.5 L776 207.5 Q770 207.5 770 201.5 L770 108.5 Q770 102.5 764 102.5 L730 102.5" fill="transparent" stroke="#888888" stroke-width="1.5"/>
 <circle cx="810" cy="207.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
 <circle cx="730" cy="102.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
-<path d="M810 242.5 L776 242.5 Q770 242.5 770 248.5 L770 277.5 L770 300 L770 329 Q770 335 764 335 L580 335 L396 335 Q390 335 390 329 L390 277.5 L390 108.5 Q390 102.5 384 102.5 L350 102.5" fill="transparent" stroke="#888888" stroke-width="1.5"/>
-<circle cx="810" cy="242.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
+<path d="M1110 242.5 L1144 242.5 Q1150 242.5 1150 236.5 L1150 207.5 L1150 16 Q1150 10 1144 10 L770 10 L396 10 Q390 10 390 16 L390 96.5 Q390 102.5 384 102.5 L350 102.5" fill="transparent" stroke="#888888" stroke-width="1.5"/>
+<circle cx="1110" cy="242.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
 <circle cx="350" cy="102.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
-<path d="M730 427.5 L764 427.5 Q770 427.5 770 421.5 L770 335 L770 300 L770 277.5 L770 242.5 L770 207.5 L770 108.5 Q770 102.5 764 102.5 L730 102.5" fill="transparent" stroke="#888888" stroke-width="1.5"/>
-<circle cx="730" cy="427.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
-<circle cx="730" cy="102.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
+<path d="M430 427.5 L396 427.5 Q390 427.5 390 421.5 L390 335 L390 277.5 L390 108.5 Q390 102.5 396 102.5 L430 102.5" fill="transparent" stroke="#888888" stroke-width="1.5"/>
+<circle cx="430" cy="427.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
+<circle cx="430" cy="102.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
 <path d="M430 462.5 L396 462.5 Q390 462.5 390 456.5 L390 433.5 Q390 427.5 384 427.5 L350 427.5" fill="transparent" stroke="#888888" stroke-width="1.5"/>
 <circle cx="430" cy="462.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
 <circle cx="350" cy="427.5" fill="#1C1C1C" r="4" stroke="#888888" stroke-width="1.5"/>
