@@ -14,18 +14,33 @@ use crate::color::WebColor;
 use crate::geometry::{Orientation, Point, Rect, Size};
 use derive_builder::Builder;
 use derive_more::Display;
+use petgraph::graph::{EdgeIndex, NodeIndex, UnGraph};
+use std::fmt;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct NodeId(NodeIndex);
+
+impl fmt::Display for NodeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.index())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EdgeId(EdgeIndex);
+
+impl fmt::Display for EdgeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.index())
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
-#[display(fmt = "{}", _0)]
-pub struct NodeId(usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
-#[display(fmt = "{}:{}", _0, _1)]
+#[display(fmt = "{}:{}", _0, _0)]
 pub struct TerminalPortId(NodeId, usize);
 
 #[derive(Debug)]
-pub struct Node {
-    pub id: NodeId,
+pub struct NodeData {
     /// The origin (absolute in the global coordination)
     pub origin: Option<Point>,
     pub size: Option<Size>,
@@ -38,10 +53,9 @@ pub struct Node {
     children: Vec<NodeId>,
 }
 
-impl Node {
-    pub fn new(id: NodeId, kind: ShapeKind) -> Self {
+impl NodeData {
+    pub fn new(kind: ShapeKind) -> Self {
         Self {
-            id,
             kind,
             origin: None,
             size: None,
@@ -75,16 +89,51 @@ impl Node {
         self.terminal_ports.iter()
     }
 
-    pub fn append_terminal_port(
+    pub fn add_terminal_port(
         &mut self,
+        node_id: NodeId,
         location: Point,
         orientation: Orientation,
     ) -> TerminalPortId {
-        let pid = TerminalPortId(self.id, self.terminal_ports.len());
+        let pid = TerminalPortId(node_id, self.terminal_ports.len());
 
         self.terminal_ports
             .push(TerminalPort::new(pid, location, orientation));
         pid
+    }
+}
+
+// --- Edge
+#[derive(Debug)]
+pub struct EdgeData {
+    source_id: NodeId,
+    target_id: NodeId,
+    path_points: Option<Vec<Point>>,
+}
+
+impl EdgeData {
+    pub fn new(source_id: NodeId, target_id: NodeId, path_points: Option<Vec<Point>>) -> Self {
+        Self {
+            source_id,
+            target_id,
+            path_points,
+        }
+    }
+
+    pub fn source_id(&self) -> NodeId {
+        self.source_id
+    }
+
+    pub fn target_id(&self) -> NodeId {
+        self.target_id
+    }
+
+    pub fn path_points(&self) -> Option<&[Point]> {
+        self.path_points.as_deref()
+    }
+
+    pub fn set_path_points(&mut self, path_points: Option<Vec<Point>>) {
+        self.path_points = path_points;
     }
 }
 
@@ -126,73 +175,88 @@ impl TerminalPort {
     }
 }
 
+pub type DocumentGraph = UnGraph<NodeData, EdgeData>;
+
 #[derive(Debug)]
 pub struct Document {
-    nodes: Vec<Node>,
-    edges: Vec<Edge>,
+    graph: DocumentGraph,
+    body_id: NodeId,
 }
 
 impl Document {
     pub fn new() -> Self {
-        let node_id = NodeId(0);
-        let node = Node::new(node_id, ShapeKind::Body(BodyShape::default()));
+        let node = NodeData::new(ShapeKind::Body(BodyShape::default()));
+        let mut graph = DocumentGraph::new_undirected();
+        let body_index = graph.add_node(node);
 
         Self {
-            nodes: vec![node],
-            edges: vec![],
+            graph,
+            body_id: NodeId(body_index),
         }
     }
 
-    pub fn body(&self) -> &Node {
-        self.nodes.get(0).unwrap()
+    pub fn body(&self) -> &NodeData {
+        self.graph.node_weight(self.body_id.0).unwrap()
     }
 
-    pub fn body_mut(&mut self) -> &mut Node {
-        self.nodes.get_mut(0).unwrap()
+    pub fn body_mut(&mut self) -> &mut NodeData {
+        self.graph.node_weight_mut(self.body_id.0).unwrap()
     }
 
     // -- Get a node
 
-    pub fn get_node(&self, node_id: &NodeId) -> Option<&Node> {
-        self.nodes.get(node_id.0)
+    pub fn get_node(&self, node_id: NodeId) -> Option<&NodeData> {
+        self.graph.node_weight(node_id.0)
     }
 
-    pub fn get_node_mut(&mut self, node_id: &NodeId) -> Option<&mut Node> {
-        self.nodes.get_mut(node_id.0)
+    pub fn get_node_mut(&mut self, node_id: NodeId) -> Option<&mut NodeData> {
+        self.graph.node_weight_mut(node_id.0)
     }
 
     // -- Create a node
 
     pub fn create_record(&mut self, record: RecordShape) -> NodeId {
-        let index = self.nodes.len();
-        let node_id = NodeId(index);
-        let node = Node::new(node_id, ShapeKind::Record(record));
+        let node = NodeData::new(ShapeKind::Record(record));
+        let index = self.graph.add_node(node);
 
-        self.nodes.push(node);
-        node_id
+        NodeId(index)
     }
 
     pub fn create_field(&mut self, field: FieldShape) -> NodeId {
-        let index = self.nodes.len();
-        let node_id = NodeId(index);
-        let node = Node::new(node_id, ShapeKind::Field(field));
+        let node = NodeData::new(ShapeKind::Field(field));
+        let index = self.graph.add_node(node);
 
-        self.nodes.push(node);
-        node_id
+        NodeId(index)
     }
 
     // --- Edge
-
-    pub fn edges(&self) -> impl ExactSizeIterator<Item = &Edge> {
-        self.edges.iter()
+    pub fn edge_endpoints(&self, edge_id: EdgeId) -> Option<(NodeId, NodeId)> {
+        self.graph
+            .edge_endpoints(edge_id.0)
+            .map(|(x, y)| (NodeId(x), NodeId(y)))
     }
 
-    pub fn edges_mut(&mut self) -> impl ExactSizeIterator<Item = &mut Edge> {
-        self.edges.iter_mut()
+    pub fn edge(&self, edge_id: EdgeId) -> Option<&EdgeData> {
+        self.graph.edge_weight(edge_id.0)
     }
 
-    pub fn append_edge(&mut self, edge: Edge) {
-        self.edges.push(edge);
+    pub fn edge_ids(&self) -> impl ExactSizeIterator<Item = EdgeId> {
+        self.graph.edge_indices().map(|i| EdgeId(i))
+    }
+
+    pub fn edges(&self) -> impl Iterator<Item = &EdgeData> {
+        self.graph.edge_weights()
+    }
+
+    pub fn edges_mut(&mut self) -> impl Iterator<Item = &mut EdgeData> {
+        self.graph.edge_weights_mut()
+    }
+
+    pub fn add_edge(&mut self, edge: EdgeData) -> EdgeId {
+        let index = self
+            .graph
+            .add_edge(edge.source_id().0, edge.target_id().0, edge);
+        EdgeId(index)
     }
 }
 
@@ -309,24 +373,6 @@ impl Default for FontSize {
     }
 }
 
-// --- Edge
-#[derive(Debug)]
-pub struct Edge {
-    pub start_node_id: NodeId,
-    pub end_node_id: NodeId,
-    pub path_points: Option<Vec<Point>>,
-}
-
-impl Edge {
-    pub fn new(start_node: NodeId, end_node: NodeId) -> Self {
-        Self {
-            start_node_id: start_node,
-            end_node_id: end_node,
-            path_points: None,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -338,9 +384,9 @@ mod tests {
         let title = TextSpanBuilder::default().text("id").build().unwrap();
         let field = FieldShapeBuilder::default().title(title).build().unwrap();
 
-        let node_id = doc.create_field(field);
+        let node_index = doc.create_field(field);
 
-        let node = doc.get_node(&node_id);
+        let node = doc.get_node(node_index);
         assert!(node.is_some());
 
         let node = node.unwrap();
@@ -350,13 +396,13 @@ mod tests {
 
         // mutate
         {
-            let node = doc.get_node_mut(&node_id).unwrap();
+            let node = doc.get_node_mut(node_index).unwrap();
             let ShapeKind::Field(field) = &mut node.kind else { panic!() };
 
             field.title.text = "uuid".to_string();
         }
 
-        let node = doc.get_node(&node_id).unwrap();
+        let node = doc.get_node(node_index).unwrap();
         let ShapeKind::Field(field) = &node.kind else { panic!() };
 
         assert_eq!(field.title.text, "uuid");

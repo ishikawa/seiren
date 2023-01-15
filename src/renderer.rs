@@ -65,7 +65,7 @@ impl Renderer for SVGRenderer<'_> {
 
         // -- Generate clip paths for record shapes.
         for (record_index, child_id) in doc.body().children().enumerate() {
-            let Some(record_node) = doc.get_node(&child_id) else { continue };
+            let Some(record_node) = doc.get_node(child_id) else { continue };
             let mir::ShapeKind::Record(_) = record_node.kind() else  { continue };
 
             let Some(record_origin) = record_node.origin else { return Err(BackendError::InvalidLayout(child_id)) };
@@ -88,7 +88,7 @@ impl Renderer for SVGRenderer<'_> {
 
         // -- Draw shapes
         for (record_index, child_id) in doc.body().children().enumerate() {
-            let Some(record_node) = doc.get_node(&child_id) else { continue };
+            let Some(record_node) = doc.get_node(child_id) else { continue };
             let mir::ShapeKind::Record(record) = record_node.kind() else  { continue };
             let Some(record_origin) = record_node.origin else { return Err(BackendError::InvalidLayout(child_id)) };
             let Some(record_size) = record_node.size else { return Err(BackendError::InvalidLayout(child_id)) };
@@ -113,7 +113,7 @@ impl Renderer for SVGRenderer<'_> {
             let record_clip_path_id = format!("{}{}", record_clip_path_id_prefix, record_index);
 
             for (field_index, field_node_id) in record_node.children().enumerate() {
-                let Some(field_node) = doc.get_node(&field_node_id) else { continue };
+                let Some(field_node) = doc.get_node(field_node_id) else { continue };
                 let mir::ShapeKind::Field(field) = field_node.kind() else  { continue };
                 let Some(field_rect) = field_node.rect() else { return Err(BackendError::InvalidLayout(field_node_id)) };
 
@@ -270,7 +270,7 @@ impl SVGRenderer<'_> {
 
     fn draw_edge_connection(
         &self,
-        edge: &mir::Edge,
+        edge: &mir::EdgeData,
     ) -> Result<(element::Path, element::Circle, element::Circle), BackendError> {
         let circle_radius = 4.0;
         let path_radius = 6.0;
@@ -282,8 +282,8 @@ impl SVGRenderer<'_> {
         });
         let background_color = WebColor::RGB(RGBColor::new(28, 28, 28));
 
-        let Some(path_points) = &edge.path_points else {
-            return Err(BackendError::InvalidLayout(edge.start_node_id))
+        let Some(path_points) = edge.path_points() else {
+            return Err(BackendError::InvalidLayout(edge.source_id()))
         };
         assert!(path_points.len() >= 2);
 
@@ -614,7 +614,7 @@ impl SVGRenderer<'_> {
 
         // Draw shortest paths
         for edge in doc.edges() {
-            let Some(path_points) = &edge.path_points else { continue };
+            let Some(path_points) = edge.path_points() else { continue };
 
             for p in path_points {
                 let circle = element::Circle::new()
@@ -632,8 +632,8 @@ impl SVGRenderer<'_> {
         for (id, rect) in doc
             .body()
             .children()
-            .filter_map(|node_id| doc.get_node(&node_id))
-            .filter_map(|node| node.rect().map(|r| (node.id, r)))
+            .filter_map(|node_id| doc.get_node(node_id).map(|node| (node_id, node)))
+            .filter_map(|(node_id, node)| node.rect().map(|r| (node_id, r)))
         {
             let label = element::Text::new()
                 .set("x", rect.max_x() + 2.0)
