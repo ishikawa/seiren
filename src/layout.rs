@@ -810,13 +810,19 @@ impl SimpleLayoutEngine {
         start_node: RouteNodeId,
         end_node: RouteNodeId,
     ) -> (RouteCost, Vec<RouteNodeId>) {
-        let graph = self.edge_route_graph();
+        let graph = &self.edge_route_graph().graph;
 
         let (cost, path) = algo::astar(
-            &graph.graph,
+            graph,
             start_node.0,
             |finish| finish == end_node.0,
-            |_| RouteCost(1),
+            |edge| {
+                let node = graph.node_weight(edge.source()).unwrap();
+                let to_node = graph.node_weight(edge.target()).unwrap();
+
+                let distance = node.location().distance(to_node.location());
+                RouteCost(distance as u32)
+            },
             |_| RouteCost(0),
         )
         .unwrap_or_else(|| {
