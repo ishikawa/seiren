@@ -36,7 +36,7 @@ impl fmt::Display for EdgeId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
-#[display(fmt = "{}:{}", _0, _0)]
+#[display(fmt = "{}:{}", _0, _1)]
 pub struct TerminalPortId(NodeId, usize);
 
 #[derive(Debug)]
