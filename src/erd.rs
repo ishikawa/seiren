@@ -61,7 +61,7 @@ impl Module {
                             .font_weight(Some(mir::FontWeight::Bold))
                             .build()
                             .unwrap();
-                        let field = mir::FieldNodeBuilder::default()
+                        let field = mir::FieldShapeBuilder::default()
                             .title(name)
                             .bg_color(Some(light_gray_color.clone()))
                             .build()
@@ -69,7 +69,7 @@ impl Module {
 
                         doc.create_field(field)
                     };
-                    let record = mir::RecordNodeBuilder::default()
+                    let record = mir::RecordShapeBuilder::default()
                         .rounded(true)
                         .bg_color(Some(table_bg_color.clone()))
                         .border_color(Some(table_border_color.clone()))
@@ -96,7 +96,7 @@ impl Module {
                                 .build()
                                 .unwrap();
 
-                            let field_node = mir::FieldNodeBuilder::default()
+                            let field_node = mir::FieldShapeBuilder::default()
                                 .title(name)
                                 .subtitle(Some(column_type))
                                 .border_color(Some(table_border_color.clone()))
@@ -117,7 +117,7 @@ impl Module {
                     let record_id = doc.create_record(record);
                     node_paths.insert(EntityPath::Entity(definition.name.clone()), record_id);
 
-                    let record_node = doc.get_node_mut(&record_id).unwrap();
+                    let record_node = doc.get_node_mut(record_id).unwrap();
 
                     record_node.append_child(header_node_id);
                     for field_id in field_ids {
@@ -130,7 +130,7 @@ impl Module {
                     let Some(start_node_id) = node_paths.get(relation.start_path()) else { continue };
                     let Some(end_node_id) = node_paths.get(relation.end_path()) else { continue };
 
-                    doc.append_edge(mir::Edge::new(*start_node_id, *end_node_id));
+                    doc.add_edge(mir::EdgeData::new(*start_node_id, *end_node_id, None));
                 }
             }
         }

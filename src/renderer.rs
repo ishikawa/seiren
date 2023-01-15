@@ -65,8 +65,8 @@ impl Renderer for SVGRenderer<'_> {
 
         // -- Generate clip paths for record shapes.
         for (record_index, child_id) in doc.body().children().enumerate() {
-            let Some(record_node) = doc.get_node(&child_id) else { continue };
-            let mir::NodeKind::Record(_) = record_node.kind() else  { continue };
+            let Some(record_node) = doc.get_node(child_id) else { continue };
+            let mir::ShapeKind::Record(_) = record_node.kind() else  { continue };
 
             let Some(record_origin) = record_node.origin else { return Err(BackendError::InvalidLayout(child_id)) };
             let Some(record_size) = record_node.size else { return Err(BackendError::InvalidLayout(child_id)) };
@@ -88,8 +88,8 @@ impl Renderer for SVGRenderer<'_> {
 
         // -- Draw shapes
         for (record_index, child_id) in doc.body().children().enumerate() {
-            let Some(record_node) = doc.get_node(&child_id) else { continue };
-            let mir::NodeKind::Record(record) = record_node.kind() else  { continue };
+            let Some(record_node) = doc.get_node(child_id) else { continue };
+            let mir::ShapeKind::Record(record) = record_node.kind() else  { continue };
             let Some(record_origin) = record_node.origin else { return Err(BackendError::InvalidLayout(child_id)) };
             let Some(record_size) = record_node.size else { return Err(BackendError::InvalidLayout(child_id)) };
 
@@ -113,8 +113,8 @@ impl Renderer for SVGRenderer<'_> {
             let record_clip_path_id = format!("{}{}", record_clip_path_id_prefix, record_index);
 
             for (field_index, field_node_id) in record_node.children().enumerate() {
-                let Some(field_node) = doc.get_node(&field_node_id) else { continue };
-                let mir::NodeKind::Field(field) = field_node.kind() else  { continue };
+                let Some(field_node) = doc.get_node(field_node_id) else { continue };
+                let mir::ShapeKind::Field(field) = field_node.kind() else  { continue };
                 let Some(field_rect) = field_node.rect() else { return Err(BackendError::InvalidLayout(field_node_id)) };
 
                 let x = field_rect.min_x();
@@ -270,7 +270,7 @@ impl SVGRenderer<'_> {
 
     fn draw_edge_connection(
         &self,
-        edge: &mir::Edge,
+        edge: &mir::EdgeData,
     ) -> Result<(element::Path, element::Circle, element::Circle), BackendError> {
         let circle_radius = 4.0;
         let path_radius = 6.0;
@@ -282,8 +282,8 @@ impl SVGRenderer<'_> {
         });
         let background_color = WebColor::RGB(RGBColor::new(28, 28, 28));
 
-        let Some(path_points) = &edge.path_points else {
-            return Err(BackendError::InvalidLayout(edge.start_node_id))
+        let Some(path_points) = edge.path_points() else {
+            return Err(BackendError::InvalidLayout(edge.source_id()))
         };
         assert!(path_points.len() >= 2);
 
@@ -528,70 +528,70 @@ impl SVGRenderer<'_> {
         let circle_radius = 4.0;
 
         // Draw route edges with direction
-        for junction in edge_route_graph.nodes() {
-            let Some(edges) = edge_route_graph.edges(junction.id()) else { continue };
-            let from_pt = junction.location();
+        for edge in edge_route_graph.edges() {
+            let Some(src) = edge_route_graph.get_node(edge.source_id()) else { continue };
+            let Some(dest) = edge_route_graph.get_node(edge.target_id()) else { continue };
 
-            for edge in edges {
-                let Some(dest) = edge_route_graph.get_node(edge.dest()) else { continue };
-                let to_pt = dest.location();
+            let from_pt = src.location();
+            let to_pt = dest.location();
 
-                let line = element::Line::new()
-                    .set("x1", from_pt.x)
-                    .set("y1", from_pt.y)
-                    .set("x2", to_pt.x)
-                    .set("y2", to_pt.y)
-                    .set("stroke", "red")
-                    .set("stroke-width", 1);
+            let line = element::Line::new()
+                .set("x1", from_pt.x)
+                .set("y1", from_pt.y)
+                .set("x2", to_pt.x)
+                .set("y2", to_pt.y)
+                .set("stroke", "red")
+                .set("stroke-width", 1);
 
-                // arrow
-                let (x, y) = (to_pt.x, to_pt.y);
-                let width = 5.0 / 2.0;
-                let height = 7.0;
-                let points = match from_pt.orthogonal_direction(to_pt) {
-                    Orientation::Up => [
-                        (x, y + circle_radius),
-                        (x - width, y + height + circle_radius),
-                        (x + width, y + height + circle_radius),
-                    ],
-                    Orientation::Down => [
-                        (x, y - circle_radius),
-                        (x - width, y - height - circle_radius),
-                        (x + width, y - height - circle_radius),
-                    ],
-                    Orientation::Left => [
-                        (x + circle_radius, y),
-                        (x + height + circle_radius, y + width),
-                        (x + height + circle_radius, y - width),
-                    ],
-                    Orientation::Right => [
-                        (x - circle_radius, y),
-                        (x - height - circle_radius, y + width),
-                        (x - height - circle_radius, y - width),
-                    ],
-                };
+            // arrow
+            let (x, y) = (to_pt.x, to_pt.y);
+            let width = 5.0 / 2.0;
+            let height = 7.0;
+            let points = match from_pt.orthogonal_direction(to_pt) {
+                Orientation::Up => [
+                    (x, y + circle_radius),
+                    (x - width, y + height + circle_radius),
+                    (x + width, y + height + circle_radius),
+                ],
+                Orientation::Down => [
+                    (x, y - circle_radius),
+                    (x - width, y - height - circle_radius),
+                    (x + width, y - height - circle_radius),
+                ],
+                Orientation::Left => [
+                    (x + circle_radius, y),
+                    (x + height + circle_radius, y + width),
+                    (x + height + circle_radius, y - width),
+                ],
+                Orientation::Right => [
+                    (x - circle_radius, y),
+                    (x - height - circle_radius, y + width),
+                    (x - height - circle_radius, y - width),
+                ],
+            };
 
+            points
+                .iter()
+                .map(|p| format!("{}, {}", p.0, p.1))
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            let arrow = element::Polygon::new().set("fill", "red").set(
+                "points",
                 points
                     .iter()
                     .map(|p| format!("{}, {}", p.0, p.1))
                     .collect::<Vec<_>>()
-                    .join(" ");
+                    .join(" "),
+            );
 
-                let arrow = element::Polygon::new().set("fill", "red").set(
-                    "points",
-                    points
-                        .iter()
-                        .map(|p| format!("{}, {}", p.0, p.1))
-                        .collect::<Vec<_>>()
-                        .join(" "),
-                );
-
-                svg_doc = svg_doc.add(line).add(arrow);
-            }
+            svg_doc.append(line);
+            svg_doc.append(arrow);
         }
 
         // Draw junction nodes
-        for junction in edge_route_graph.nodes() {
+        for junction_id in edge_route_graph.node_ids() {
+            let junction = edge_route_graph.get_node(junction_id).unwrap();
             let pt = junction.location();
             let circle = element::Circle::new()
                 .set("cx", pt.x)
@@ -607,14 +607,14 @@ impl SVGRenderer<'_> {
                 .set("fill", "white")
                 .set("font-size", 12)
                 .set("font-family", "monospace")
-                .add(svg::node::Text::new(junction.id().to_string()));
+                .add(svg::node::Text::new(junction_id.to_string()));
 
             svg_doc = svg_doc.add(circle).add(label);
         }
 
         // Draw shortest paths
         for edge in doc.edges() {
-            let Some(path_points) = &edge.path_points else { continue };
+            let Some(path_points) = edge.path_points() else { continue };
 
             for p in path_points {
                 let circle = element::Circle::new()
@@ -632,8 +632,8 @@ impl SVGRenderer<'_> {
         for (id, rect) in doc
             .body()
             .children()
-            .filter_map(|node_id| doc.get_node(&node_id))
-            .filter_map(|node| node.rect().map(|r| (node.id, r)))
+            .filter_map(|node_id| doc.get_node(node_id).map(|node| (node_id, node)))
+            .filter_map(|(node_id, node)| node.rect().map(|r| (node_id, r)))
         {
             let label = element::Text::new()
                 .set("x", rect.max_x() + 2.0)
