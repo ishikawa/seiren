@@ -109,9 +109,7 @@ mod tests {
     use petgraph::prelude::UnGraph;
 
     #[test]
-    fn low_link() {
-        // Build a graph
-        //
+    fn low_link_1() {
         // v0----.
         // |     |
         // v1    |
@@ -146,10 +144,9 @@ mod tests {
     }
 
     #[test]
-    fn low_link2() {
-        // ```ignore
+    fn low_link_2() {
         // v0- - - -(v1)- - - -(v2)- - - -v3
-        // ```
+        //
         let mut g: UnGraph<&str, &str> = UnGraph::<&str, &str>::default();
 
         let v0 = g.add_node("v0");
@@ -175,8 +172,7 @@ mod tests {
     }
 
     #[test]
-    fn low_link3() {
-        // ```ignore
+    fn low_link_3() {
         //     6
         //     |
         //  0--1--2--3
@@ -184,7 +180,6 @@ mod tests {
         //     4
         //     |
         //     5
-        // ```
         let mut g: UnGraph<&str, &str> = UnGraph::<&str, &str>::default();
 
         let v0 = g.add_node("v0");
@@ -212,5 +207,46 @@ mod tests {
             &low_link.bridges,
             &[(v1, v6), (v4, v5), (v1, v4), (v2, v3), (v1, v2), (v0, v1)]
         );
+    }
+
+    #[test]
+    fn low_link_empty() {
+        let g: UnGraph<&str, &str> = UnGraph::<&str, &str>::default();
+
+        let mut low_link = LowLink::new(&g);
+        low_link.traverse(&g);
+
+        assert_eq!(low_link.articulations.len(), 0);
+        assert_eq!(low_link.bridges.len(), 0);
+    }
+
+    #[test]
+    fn low_link_one() {
+        let mut g: UnGraph<&str, &str> = UnGraph::<&str, &str>::default();
+        g.add_node("A");
+
+        let mut low_link = LowLink::new(&g);
+        low_link.traverse(&g);
+
+        assert_eq!(low_link.articulations.len(), 0);
+        assert_eq!(low_link.bridges.len(), 0);
+    }
+
+    #[test]
+    fn low_link_two() {
+        // v0- - - -v1
+        let mut g: UnGraph<&str, &str> = UnGraph::<&str, &str>::default();
+
+        let v0 = g.add_node("v0");
+        let v1 = g.add_node("v1");
+
+        g.extend_with_edges(&[(v0, v1)]);
+
+        let mut low_link = LowLink::new(&g);
+        low_link.traverse(&g);
+
+        assert_eq!(low_link.articulations.len(), 0);
+        assert_eq!(low_link.bridges.len(), 1);
+        assert_eq!(&low_link.bridges, &[(v0, v1)]);
     }
 }
