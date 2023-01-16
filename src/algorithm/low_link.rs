@@ -144,4 +144,33 @@ mod tests {
         assert_eq!(low_link.bridges.len(), 1);
         assert_eq!(low_link.bridges[0], (v3, v5));
     }
+
+    #[test]
+    fn low_link2() {
+        // ```ignore
+        // v0- - - -(v1)- - - -(v2)- - - -v3
+        // ```
+        let mut g: UnGraph<&str, &str> = UnGraph::<&str, &str>::default();
+
+        let v0 = g.add_node("v0");
+        let v1 = g.add_node("v1");
+        let v2 = g.add_node("v2");
+        let v3 = g.add_node("v3");
+
+        g.extend_with_edges(&[(v0, v1), (v1, v2), (v2, v3)]);
+
+        // -- Low Link
+
+        let mut low_link = LowLink::new(&g);
+
+        low_link.traverse(&g);
+
+        assert_eq!(low_link.articulations.len(), 2);
+        assert_eq!(low_link.articulations[0], v2);
+        assert_eq!(low_link.articulations[1], v1);
+        assert_eq!(low_link.bridges.len(), 3);
+        assert_eq!(low_link.bridges[0], (v2, v3));
+        assert_eq!(low_link.bridges[1], (v1, v2));
+        assert_eq!(low_link.bridges[2], (v0, v1));
+    }
 }
