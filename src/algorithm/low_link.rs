@@ -5,15 +5,17 @@ use petgraph::visit::{
 // structure to enumerate articulations and bridges of a graph
 //
 // - DFS tree: starting from a vertex v ∈ V, DFS is performed so that each vertex is visited at most
-// once. The tree consisting of the edges used is called a DFS tree. This tree is a rooted tree with
-// root v
-// - Backward edges: edges not used in the DFS tree in the direction from the leaf to the root
+//   once. The tree consisting of the edges used is called a DFS tree. This tree is a rooted tree
+//   with root `v`.
+// - Back edges: An edge `(u, v)` such that `v` is the ancestor of node `u` but is not part of the DFS
+//   tree.
 #[derive(Debug)]
 pub struct LowLink<N, VM> {
     used: VM,
     // Order in which the vertices were visited in the DFS
     ord: Vec<usize>,
-    // Minimum ord of vertices reachable from vertex v through the leafwise edge of the DFS tree more than 0 times and less than once through the backward edge
+    // Minimum ord of vertices reachable from vertex v through the leaf-wise edge of the DFS tree
+    // more than 0 times and less than once through the backward edge
     low: Vec<usize>,
     pub articulations: Vec<N>,
     pub bridges: Vec<(N, N)>,
