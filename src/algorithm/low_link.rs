@@ -30,15 +30,34 @@ where
     where
         G: GraphRef + NodeIndexable + Visitable<NodeId = N, Map = VM>,
     {
-        let capacity = graph.node_bound();
+        let node_bound = graph.node_bound();
 
         Self {
             used: graph.visit_map(),
-            ord: vec![usize::MAX; capacity],
-            low: vec![usize::MAX; capacity],
+            ord: vec![usize::MAX; node_bound],
+            low: vec![usize::MAX; node_bound],
             articulations: vec![],
             bridges: vec![],
         }
+    }
+
+    /// Clear the internal state for a graph.
+    pub fn clear<G>(&mut self, graph: G)
+    where
+        G: NodeIndexable + Visitable<NodeId = N, Map = VM>,
+    {
+        let node_bound = graph.node_bound();
+
+        if self.ord.len() != node_bound {
+            self.ord.resize(node_bound, usize::MAX);
+            self.low.resize(node_bound, usize::MAX);
+        }
+
+        self.ord.fill(usize::MAX);
+        self.low.fill(usize::MAX);
+        self.articulations.clear();
+        self.bridges.clear();
+        self.used = graph.visit_map();
     }
 
     pub fn traverse<G>(&mut self, graph: G)

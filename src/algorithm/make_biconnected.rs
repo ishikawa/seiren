@@ -49,7 +49,7 @@ where
 
             let ei = graph.add_edge(n, m, E::default());
 
-            let mut low_link = LowLink::new(&*graph);
+            low_link.clear(&*graph);
             low_link.traverse(&*graph);
 
             if low_link.articulations.is_empty() {
