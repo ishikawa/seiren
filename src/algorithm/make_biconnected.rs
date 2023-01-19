@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use super::low_link::LowLink;
-use petgraph::graph::{EdgeIndex, NodeIndex};
+use petgraph::graph::NodeIndex;
 use petgraph::{EdgeType, Graph};
 
 /// Convert a graph to a biconnected graph by adding edges between vertexes.
@@ -15,55 +15,53 @@ where
     E: Default,
     Ty: EdgeType,
 {
-    let mut ei: Option<EdgeIndex> = None;
-    let mut n = 0;
+    let mut low_link = LowLink::new(&*graph);
+    low_link.traverse(&*graph);
+
+    if low_link.articulations.is_empty() {
+        // The graph became biconnected
+        return;
+    }
+
     let mut visited: HashSet<(NodeIndex, NodeIndex)> = HashSet::new();
+    let mut n_articulations = low_link.articulations.len();
+    let articulations: HashSet<NodeIndex> =
+        HashSet::from_iter(low_link.articulations.iter().copied());
 
-    'LOOP: loop {
-        let mut low_link = LowLink::new(&*graph);
-        low_link.traverse(&*graph);
+    // brute-force: pick non-adjacent 2 vertexes from a graph and connect them if
+    // both are not an articulation.
+    for n in graph.node_indices() {
+        for m in graph.node_indices() {
+            if visited.contains(&(n, m)) {
+                continue;
+            }
+            visited.insert((n, m));
 
-        if low_link.articulations.is_empty() {
-            // The graph became biconnected
-            return;
-        } else if low_link.articulations.len() == n {
-            // The previously inserted edge is redundant if it doesn't remove articulations.
-            if let Some(ei) = ei {
+            if n == m {
+                continue;
+            }
+            if graph.contains_edge(n, m) {
+                continue;
+            }
+            if articulations.contains(&n) || articulations.contains(&m) {
+                continue;
+            }
+
+            let ei = graph.add_edge(n, m, E::default());
+
+            let mut low_link = LowLink::new(&*graph);
+            low_link.traverse(&*graph);
+
+            if low_link.articulations.is_empty() {
+                // The graph is already biconnected
+                return;
+            }
+            if low_link.articulations.len() == n_articulations {
+                // The previously inserted edge is redundant if it doesn't remove articulations.
                 graph.remove_edge(ei);
             }
-        }
 
-        n = low_link.articulations.len();
-
-        // brute-force: pick non-adjacent 2 vertexes from a graph and connect them if
-        // both are not an articulation.
-        for n in graph.node_indices() {
-            for m in graph.node_indices() {
-                if visited.contains(&(n, m)) {
-                    continue;
-                }
-                visited.insert((n, m));
-
-                if n == m {
-                    continue;
-                }
-                if graph.contains_edge(n, m) {
-                    continue;
-                }
-                if low_link
-                    .articulations
-                    .iter()
-                    .copied()
-                    .any(|i| i == n || i == m)
-                {
-                    continue;
-                }
-
-                ei = Some(graph.add_edge(n, m, E::default()));
-
-                // Re-check whether the graph became biconnected or not?
-                continue 'LOOP;
-            }
+            n_articulations = low_link.articulations.len();
         }
     }
 }
