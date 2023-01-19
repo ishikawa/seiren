@@ -12,13 +12,12 @@ use petgraph::{EdgeType, Graph};
 /// that the complete graph of two vertices is usually not regarded as 2-connected.
 pub fn make_biconnected<N, E, Ty>(graph: &mut Graph<N, E, Ty>)
 where
-    N: Copy + PartialEq,
     E: Default,
     Ty: EdgeType,
 {
     let mut ei: Option<EdgeIndex> = None;
     let mut n = 0;
-    let mut s: HashSet<(NodeIndex, NodeIndex)> = HashSet::new();
+    let mut visited: HashSet<(NodeIndex, NodeIndex)> = HashSet::new();
 
     'LOOP: loop {
         let mut low_link = LowLink::new(&*graph);
@@ -27,8 +26,9 @@ where
         if low_link.articulations.is_empty() {
             // The graph became biconnected
             return;
-        } else if let Some(ei) = ei {
-            if low_link.articulations.len() == n {
+        } else if low_link.articulations.len() == n {
+            // The previously inserted edge is redundant if it doesn't remove articulations.
+            if let Some(ei) = ei {
                 graph.remove_edge(ei);
             }
         }
@@ -39,6 +39,11 @@ where
         // both are not an articulation.
         for n in graph.node_indices() {
             for m in graph.node_indices() {
+                if visited.contains(&(n, m)) {
+                    continue;
+                }
+                visited.insert((n, m));
+
                 if n == m {
                     continue;
                 }
@@ -53,11 +58,7 @@ where
                 {
                     continue;
                 }
-                if s.contains(&(n, m)) {
-                    continue;
-                }
 
-                s.insert((n, m));
                 ei = Some(graph.add_edge(n, m, E::default()));
 
                 // Re-check whether the graph became biconnected or not?
