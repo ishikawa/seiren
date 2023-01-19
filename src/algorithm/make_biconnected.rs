@@ -1,4 +1,7 @@
+use std::collections::HashSet;
+
 use super::low_link::LowLink;
+use petgraph::graph::{EdgeIndex, NodeIndex};
 use petgraph::{EdgeType, Graph};
 
 /// Convert a graph to a biconnected graph by adding edges between vertexes.
@@ -13,14 +16,24 @@ where
     E: Default,
     Ty: EdgeType,
 {
-    loop {
+    let mut ei: Option<EdgeIndex> = None;
+    let mut n = 0;
+    let mut s: HashSet<(NodeIndex, NodeIndex)> = HashSet::new();
+
+    'LOOP: loop {
         let mut low_link = LowLink::new(&*graph);
         low_link.traverse(&*graph);
 
         if low_link.articulations.is_empty() {
             // The graph became biconnected
             return;
+        } else if let Some(ei) = ei {
+            if low_link.articulations.len() == n {
+                graph.remove_edge(ei);
+            }
         }
+
+        n = low_link.articulations.len();
 
         // brute-force: pick non-adjacent 2 vertexes from a graph and connect them if
         // both are not an articulation.
@@ -40,9 +53,15 @@ where
                 {
                     continue;
                 }
+                if s.contains(&(n, m)) {
+                    continue;
+                }
 
-                graph.add_edge(n, m, E::default());
-                break;
+                s.insert((n, m));
+                ei = Some(graph.add_edge(n, m, E::default()));
+
+                // Re-check whether the graph became biconnected or not?
+                continue 'LOOP;
             }
         }
     }
@@ -78,6 +97,8 @@ mod tests {
 
         // -- convert it to biconnected graph
         make_biconnected(&mut g);
+        assert_eq!(g.edge_count(), 7);
+        g.contains_edge(v0, v3);
 
         let mut low_link = LowLink::new(&g);
 
@@ -101,6 +122,8 @@ mod tests {
 
         // -- convert it to biconnected graph
         make_biconnected(&mut g);
+        assert_eq!(g.edge_count(), 4);
+        g.contains_edge(v0, v3);
 
         let mut low_link = LowLink::new(&g);
 
@@ -134,6 +157,11 @@ mod tests {
         // -- convert it to biconnected graph
         make_biconnected(&mut g);
 
+        assert_eq!(g.edge_count(), 9);
+        g.contains_edge(v0, v5);
+        g.contains_edge(v0, v3);
+
+        // low link
         let mut low_link = LowLink::new(&g);
         low_link.traverse(&g);
 
@@ -160,6 +188,7 @@ mod tests {
         g.add_node("A");
 
         make_biconnected(&mut g);
+        assert_eq!(g.edge_count(), 0);
 
         let mut low_link = LowLink::new(&g);
         low_link.traverse(&g);
@@ -177,6 +206,7 @@ mod tests {
         let v1 = g.add_node("v1");
 
         g.extend_with_edges(&[(v0, v1)]);
+        assert_eq!(g.edge_count(), 1);
 
         make_biconnected(&mut g);
 
