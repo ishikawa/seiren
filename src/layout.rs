@@ -1,4 +1,21 @@
 //! Layout engine
+//! An example of a grid layout and connections is shown in the diagram below.
+//!
+//! ```svgbob
+//!  +---------+---------+
+//!  |    o<---!-.  o<-. |
+//!  |         ! |     | |
+//!  |         ! |--o  | |
+//!  |- - - - -+-| - - |-|
+//!  |         ! |  o-'| |
+//!  |         ! |     | |
+//!  |         ! `--o  | |
+//!  |- - - - -!- - - -|-|
+//!  |    o<---!-.  o--' |
+//!  |         ! |       |
+//!  |         ! `--o    |
+//!  +---------+---------+
+//! ```
 use crate::{
     geometry::{Orientation, Point, Rect, Size},
     mir::{self, ShapeKind, TerminalPort, TerminalPortId},
