@@ -72,8 +72,8 @@
 //! - Connections should choose the shortest path.
 //! - Connections incident to different fields SHOULD NOT intersect or take the same path.
 //!
-//! To calculate the path of a connection, first consider the field and the connection point as
-//! vertices aligned on a line of the grid.
+//! To calculate the path of a connection, first consider fields, connection points and bends as
+//! vertices aligned on lines of the grid.
 //!
 //! ```svgbob
 //! (0, 0)             (0, 4)
@@ -95,7 +95,7 @@
 //!     :   :   :   :   :
 //!     o.......o...*...o
 //!     :   :   :   :   :
-//!     ........o...o...o
+//!     '.......o...o...o
 //! (9, 0)             (9, 4)
 //! ```
 //!
@@ -121,7 +121,7 @@
 //!     :   :   |   :   :
 //!     o.......o---*...o
 //!     :   :   :   :   :
-//!     ........o...o...o
+//!     '.......o...o...o
 //! (9, 0)             (9, 4)
 //! ```
 use crate::{
