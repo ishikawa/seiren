@@ -66,13 +66,13 @@
 //!
 //! The rules for drawing connections are shown below:
 //!
-//! - There are connection ports to the left, right, or bottom of the field that can be connected.
-//! - Connections can only go horizontally or vertically and can turn at **bends** around the record.
+//! - There are _connection ports_ to the left, right, or bottom of the field that can be connected.
+//! - Connections can only go horizontally or vertically and can turn at _bends_ around the record.
 //!   - Therefore, the angle of the bend must always be a right angle,
 //! - Connections should choose the shortest path.
 //! - Connections incident to different fields SHOULD NOT intersect or take the same path.
 //!
-//! To calculate the path of a connection, first consider fields, connection points and bends as
+//! To calculate the path of a connection, first consider fields, connection ports and bends as
 //! vertices aligned on lines of the grid.
 //!
 //! ```svgbob
