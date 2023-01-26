@@ -17,6 +17,7 @@ Cargo.lock
 /.vscode
 .DS_Store
 /_work
+tests/_work.rs
 
 # Added by cargo
 
