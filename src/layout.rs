@@ -1,7 +1,6 @@
 //! Layout engine
 //!
-//! Algorithm
-//! ---------
+//! ## Algorithm
 //!
 //! To illustrate the layout algorithm implemented in this module, consider the following example.
 //!
@@ -76,7 +75,7 @@
 //! vertices aligned on lines of the grid.
 //!
 //! ```svgbob
-//! (0, 0)             (0, 4)
+//! (0, 0)             (4, 0)
 //!     o...o...o...o...o
 //!     :   :   :   :   :
 //!     o...*...o...*...o
@@ -94,9 +93,9 @@
 //!     o...*...o...*...o
 //!     :       :   :   :
 //!     o...o...o...*...o
-//!             :   :   :
+//! (0, 8)      :   :   :
 //!             o...o...o
-//! (9, 0)             (9, 4)
+//!                    (4, 9)
 //! ```
 //!
 //! Calculate the route according to the above rules.
@@ -122,8 +121,20 @@
 //!     o...o...o---*...o
 //!             :   :   :
 //!             o...o...o
-//! (9, 0)             (9, 4)
+//! (0, 9)             (4, 9)
 //! ```
+//!
+//! ## Definition
+//!
+//! - **Grid point** - a point with integer coordinates.
+//! - **(m, n) grid** - the set of grid points `(x, y)` with:
+//!   - `0 <= x <= m`
+//!   - `0 <= y <= n`
+//! - Places each vertex of the graph `G = (V, E)` at each grid point.
+//! - The number of edges (degree) `d` connecting each vertex is `2 <= d <= 4`.
+//! - A sequence of connected vertices in a graph is called a *path*.
+//!   - Only adjacent vertices on the grid can be connected.
+//!   - A vertex that is a start or target is not a path transit node.
 use crate::{
     geometry::{Orientation, Point, Rect, Size},
     mir::{self, ShapeKind, TerminalPort, TerminalPortId},
