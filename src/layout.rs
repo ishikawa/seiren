@@ -1,128 +1,20 @@
 //! Layout engine
-//!
-//! Algorithm
-//! ---------
-//!
-//! To illustrate the layout algorithm implemented in this module, consider the following example.
-//!
-//! ```plaintext
-//! posts.created_by o--> users.id
-//! comments.post_id o--> posts.id
-//! comments.created_by o--> users.id
-//! post_tags.post_id o--> posts.id
-//! post_tags.tag_id o--> tags.id
-//! ```
-//!
-//! In this example, there are records `users`, `posts`, `comments`, `post_tags`, and `tags`, which
-//! are related to each other. Suppose these records are arranged as follows:
+//! An example of a grid layout and connections is shown in the diagram below.
 //!
 //! ```svgbob
-//! +---------+    +-------------+
-//! | (users) |    | (posts)     |
-//! | id      |    | id          |
-//! | :       |    | created_by  |
-//! +---------+    |             |
-//!                +-------------+
-//!
-//!                +-------------+
-//!                | (comments)  |
-//!                | post_id     |
-//!                | created_by  |
-//!                |             |
-//!                +-------------+
-//!
-//! +---------+    +-------------+
-//! | (tags)  |    | (post_tags) |
-//! | id      |    | post_id     |
-//! | :       |    | tag_id      |
-//! +---------+    |             |
-//!                +-------------+
-//! ```
-//!
-//! Connections between related records (fields) are drawn as follows:
-//!
-//! ```svgbob
-//! +---------+    +-------------+
-//! | (users) |    | (posts)     |
-//! | id      o<-. | id          o<-.
-//! | :       |  |-o created_by  |  |
-//! +---------+  | |             |  |
-//!              | +-------------+  |
-//!              |                  |
-//!              | +-------------+  |
-//!              | | (comments)  |  |
-//!              | | post_id     o--|
-//!              `-o created_by  |  |
-//!                |             |  |
-//!                +-------------+  |
-//!                                 |
-//! +---------+    +-------------+  |
-//! | (tags)  |    | (post_tags) |  |
-//! | id      o<-. | post_id     o--'
-//! | :       |  `-o tag_id      |
-//! +---------+    |             |
-//!                +-------------+
-//! ```
-//!
-//! The rules for drawing connections are shown below:
-//!
-//! - There are _connection ports_ to the left, right, or bottom of the field that can be connected.
-//! - Connections can only go horizontally or vertically and can turn at _bends_ around the record.
-//!   - Therefore, the angle of the bend must always be a right angle,
-//! - Connections should choose the shortest path.
-//! - Connections incident to different fields SHOULD NOT intersect or take the same path.
-//!
-//! To calculate the path of a connection, first consider fields, connection ports and bends as
-//! vertices aligned on lines of the grid.
-//!
-//! ```svgbob
-//! (0, 0)             (0, 4)
-//!     o...o...o...o...o
-//!     :   :   :   :   :
-//!     o...*...o...*...o
-//!     :       :   :   :
-//!     o...o...o...*...o
-//!             :   :   :
-//!             o...o...o
-//!             :   :   :
-//!             o...*...o
-//!             :   :   :
-//!             o...*...o
-//!             :   :   :
-//!     o...o...o...o...o
-//!     :   :   :   :   :
-//!     o...*...o...*...o
-//!     :       :   :   :
-//!     o...o...o...*...o
-//!             :   :   :
-//!             o...o...o
-//! (9, 0)             (9, 4)
-//! ```
-//!
-//! Calculate the route according to the above rules.
-//!
-//! ```svgbob
-//! (0, 0)             (0, 4)
-//!     o...o...o...o...o
-//!     :   :   :   :   :
-//!     o...*<--o...*<--o
-//!     :       |   :   |
-//!     o...o...o---*...o
-//!             |   :   |
-//!             o...o...o
-//!             |   :   |
-//!             o...*---o
-//!             |   :   |
-//!             o---*...o
-//!             :   :   |
-//!     o...o...o...o...o
-//!     :   :   :   :   |
-//!     o...*<--o...*---o
-//!     :       |   :   :
-//!     o...o...o---*...o
-//!             :   :   :
-//!             o...o...o
-//! (9, 0)             (9, 4)
+//!  +---------+---------+
+//!  |    o<---!-.  o<-. |
+//!  |         ! |     | |
+//!  |         ! |--o  | |
+//!  |- - - - -+-| - - |-|
+//!  |         ! |  o-'| |
+//!  |         ! |     | |
+//!  |         ! `--o  | |
+//!  |- - - - -!- - - -|-|
+//!  |    o<---!-.  o--' |
+//!  |         ! |       |
+//!  |         ! `--o    |
+//!  +---------+---------+
 //! ```
 use crate::{
     geometry::{Orientation, Point, Rect, Size},
@@ -363,7 +255,7 @@ impl SimpleLayoutEngine {
     const RECORD_SPACE: f32 = 80.0;
 
     // The number of columns in fixed grid.
-    const GRID_N_COLUMNS: usize = 2;
+    const GRID_N_COLUMNS: usize = 3;
 
     // for debug
     pub fn edge_route_graph(&self) -> &RouteGraph {
@@ -375,22 +267,15 @@ impl LayoutEngine for SimpleLayoutEngine {
     fn place_nodes(&mut self, doc: &mut mir::Document) -> Option<Rect> {
         // Grid
         let n_columns = Self::GRID_N_COLUMNS;
-        let blank_cell_indices: [usize; 1] = [3];
 
         // Iterate records
         let child_id_vec = doc.body().children().collect::<Vec<_>>();
 
         let mut base_y = Self::ORIGIN.y;
         let mut max_height = f32::MIN;
-        let mut grid_cell_index = 0;
 
         for (record_index, child_id) in child_id_vec.iter().copied().enumerate() {
-            if blank_cell_indices.contains(&grid_cell_index) {
-                grid_cell_index += 1;
-            }
-
-            // Calculate grid cell rectangle
-            if grid_cell_index > 0 && (grid_cell_index % n_columns == 0) {
+            if record_index > 0 && (record_index % n_columns == 0) {
                 // Move to next row.
                 base_y += max_height + Self::RECORD_SPACE;
                 max_height = f32::MIN;
@@ -401,7 +286,7 @@ impl LayoutEngine for SimpleLayoutEngine {
 
             let n_fields = record_node.children().len() as f32;
             let x = Self::ORIGIN.x
-                + (Self::RECORD_WIDTH + Self::RECORD_SPACE) * (grid_cell_index % n_columns) as f32;
+                + (Self::RECORD_WIDTH + Self::RECORD_SPACE) * (record_index % n_columns) as f32;
 
             let record_height = Self::LINE_HEIGHT * n_fields;
             max_height = record_height.max(max_height);
@@ -420,8 +305,6 @@ impl LayoutEngine for SimpleLayoutEngine {
                 field_node.origin = Some(Point::new(x, y));
                 field_node.size = Some(Size::new(Self::RECORD_WIDTH, Self::LINE_HEIGHT));
             }
-
-            grid_cell_index += 1;
         }
 
         // Compute view box
