@@ -1,20 +1,128 @@
 //! Layout engine
-//! An example of a grid layout and connections is shown in the diagram below.
+//!
+//! Algorithm
+//! ---------
+//!
+//! To illustrate the layout algorithm implemented in this module, consider the following example.
+//!
+//! ```plaintext
+//! posts.created_by o--> users.id
+//! comments.post_id o--> posts.id
+//! comments.created_by o--> users.id
+//! post_tags.post_id o--> posts.id
+//! post_tags.tag_id o--> tags.id
+//! ```
+//!
+//! In this example, there are records `users`, `posts`, `comments`, `post_tags`, and `tags`, which
+//! are related to each other. Suppose these records are arranged as follows:
 //!
 //! ```svgbob
-//!  +---------+---------+
-//!  |    o<---!-.  o<-. |
-//!  |         ! |     | |
-//!  |         ! |--o  | |
-//!  |- - - - -+-| - - |-|
-//!  |         ! |  o-'| |
-//!  |         ! |     | |
-//!  |         ! `--o  | |
-//!  |- - - - -!- - - -|-|
-//!  |    o<---!-.  o--' |
-//!  |         ! |       |
-//!  |         ! `--o    |
-//!  +---------+---------+
+//! +---------+    +-------------+
+//! | (users) |    | (posts)     |
+//! | id      |    | id          |
+//! | :       |    | created_by  |
+//! +---------+    |             |
+//!                +-------------+
+//!
+//!                +-------------+
+//!                | (comments)  |
+//!                | post_id     |
+//!                | created_by  |
+//!                |             |
+//!                +-------------+
+//!
+//! +---------+    +-------------+
+//! | (tags)  |    | (post_tags) |
+//! | id      |    | post_id     |
+//! | :       |    | tag_id      |
+//! +---------+    |             |
+//!                +-------------+
+//! ```
+//!
+//! Connections between related records (fields) are drawn as follows:
+//!
+//! ```svgbob
+//! +---------+    +-------------+
+//! | (users) |    | (posts)     |
+//! | id      o<-. | id          o<-.
+//! | :       |  |-o created_by  |  |
+//! +---------+  | |             |  |
+//!              | +-------------+  |
+//!              |                  |
+//!              | +-------------+  |
+//!              | | (comments)  |  |
+//!              | | post_id     o--|
+//!              `-o created_by  |  |
+//!                |             |  |
+//!                +-------------+  |
+//!                                 |
+//! +---------+    +-------------+  |
+//! | (tags)  |    | (post_tags) |  |
+//! | id      o<-. | post_id     o--'
+//! | :       |  `-o tag_id      |
+//! +---------+    |             |
+//!                +-------------+
+//! ```
+//!
+//! The rules for drawing connections are shown below:
+//!
+//! - There are _connection ports_ to the left, right, or bottom of the field that can be connected.
+//! - Connections can only go horizontally or vertically and can turn at _bends_ around the record.
+//!   - Therefore, the angle of the bend must always be a right angle,
+//! - Connections should choose the shortest path.
+//! - Connections incident to different fields SHOULD NOT intersect or take the same path.
+//!
+//! To calculate the path of a connection, first consider fields, connection ports and bends as
+//! vertices aligned on lines of the grid.
+//!
+//! ```svgbob
+//! (0, 0)             (0, 4)
+//!     o...o...o...o...o
+//!     :   :   :   :   :
+//!     o...*...o...*...o
+//!     :       :   :   :
+//!     o...o...o...*...o
+//!             :   :   :
+//!             o...o...o
+//!             :   :   :
+//!             o...*...o
+//!             :   :   :
+//!             o...*...o
+//!             :   :   :
+//!     o...o...o...o...o
+//!     :   :   :   :   :
+//!     o...*...o...*...o
+//!     :       :   :   :
+//!     o...o...o...*...o
+//!             :   :   :
+//!             o...o...o
+//! (9, 0)             (9, 4)
+//! ```
+//!
+//! Calculate the route according to the above rules.
+//!
+//! ```svgbob
+//! (0, 0)             (0, 4)
+//!     o...o...o...o...o
+//!     :   :   :   :   :
+//!     o...*<--o...*<--o
+//!     :       |   :   |
+//!     o...o...o---*...o
+//!             |   :   |
+//!             o...o...o
+//!             |   :   |
+//!             o...*---o
+//!             |   :   |
+//!             o---*...o
+//!             :   :   |
+//!     o...o...o...o...o
+//!     :   :   :   :   |
+//!     o...*<--o...*---o
+//!     :       |   :   :
+//!     o...o...o---*...o
+//!             :   :   :
+//!             o...o...o
+//! (9, 0)             (9, 4)
 //! ```
 use crate::{
     geometry::{Orientation, Point, Rect, Size},
