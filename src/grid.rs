@@ -70,9 +70,25 @@ use std::ops::{Index, IndexMut};
 /// A point with integer coordinates.
 ///
 /// **(m, n) grid** is the set of grid points `(x, y)` with `0 <= x <= m, 0 <= y <= n`.
-#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Display)]
-#[display(fmt = "({}, {})", _0, _1)]
-pub struct GridPoint(u16, u16);
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Display)]
+#[display(fmt = "({}, {})", x, y)]
+pub struct GridPoint {
+    pub x: u16,
+    pub y: u16,
+}
+
+impl GridPoint {
+    pub fn new(x: u16, y: u16) -> Self {
+        Self { x, y }
+    }
+
+    pub fn x(&self) -> usize {
+        self.x as usize
+    }
+    pub fn y(&self) -> usize {
+        self.y as usize
+    }
+}
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Display)]
 #[display(fmt = "({}, {})", columns, rows)]
@@ -87,6 +103,14 @@ impl GridShape {
         Self { columns, rows }
     }
 
+    pub fn columns(&self) -> usize {
+        self.columns as usize
+    }
+
+    pub fn rows(&self) -> usize {
+        self.rows as usize
+    }
+
     /// Return the upper bound of the node indices in a grid.
     pub fn node_bound(&self) -> usize {
         (self.columns * self.rows) as usize
@@ -94,11 +118,85 @@ impl GridShape {
 
     /// Return the upper bound of the edge indices in a grid.
     pub fn edge_bound(&self) -> usize {
-        if self.rows == 0 {
+        if self.columns == 0 || self.rows == 0 {
             0
         } else {
             (self.columns * (self.rows * 2 - 1)) as usize
         }
+    }
+
+    /// Computes the grid point of a node at `index`.
+    pub fn node_point(&self, index: usize) -> GridPoint {
+        assert!(index < self.node_bound());
+
+        let x = index % self.columns as usize;
+        let y = index / self.columns as usize;
+
+        GridPoint::new(x as u16, y as u16)
+    }
+
+    /// Computes edge index between node `a` and `b`.
+    ///
+    /// - **Panics** if `a == b`.
+    /// - **Panics** if `a` or `b` is overflow.
+    /// - **Panics** if `a` and `b` aren't neighbors.
+    ///
+    pub fn edge_index_between(&self, a: usize, b: usize) -> usize {
+        let edge_bound = self.edge_bound();
+        assert!(a != b);
+        assert!(a < edge_bound);
+        assert!(b < edge_bound);
+
+        let u = self.node_point(a.min(b));
+        let v = self.node_point(b.max(a));
+        assert!(u.x == v.x || u.y == v.y);
+
+        if u.y == v.y {
+            assert!(v.x - u.x == 1);
+            u.y() * 2 * self.columns() + u.x()
+        } else {
+            assert!(v.y - u.y == 1);
+            (u.y() * 2 + 1) * self.columns() + u.x()
+        }
+    }
+}
+
+/// Represents edge direction.
+///
+/// Suppose the edge connects `(u, v)` nodes where `u < v`:
+///
+/// - Incoming: the edge incidents to `u` (`u <-- v`).
+/// - Outgoing: the edge incidents to `v` (`u --> v`).
+/// - Both: the edge incidents to `u` and `v` (`u <--> v`).
+///
+/// **Note** if the graph is undirected, every edge has `Both` direction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
+pub enum EdgeDirection {
+    Incoming,
+    Outgoing,
+    Both,
+}
+
+#[derive(Debug)]
+pub struct Edge<E> {
+    weight: E,
+    direction: EdgeDirection,
+}
+
+impl<E> Clone for Edge<E>
+where
+    E: Clone,
+{
+    fn clone(&self) -> Self {
+        Edge {
+            weight: self.weight.clone(),
+            direction: self.direction.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, rhs: &Self) {
+        self.weight = rhs.weight.clone();
+        self.direction = rhs.direction.clone();
     }
 }
 
@@ -110,7 +208,7 @@ pub struct GridGraph<N, E, Ty = Directed, Ix = DefaultIx> {
     // nodes = `m x n` vector
     nodes: Vec<Option<N>>,
     // nodes = `m x (n * 2 - 1)` vector
-    edges: Vec<Option<E>>,
+    edges: Vec<Option<Edge<E>>>,
     ty: PhantomData<Ty>,
     ix: PhantomData<Ix>,
 }
@@ -232,6 +330,51 @@ where
     /// Also available with indexing syntax: `&mut graph[a]`.
     pub fn node_weight_mut(&mut self, a: NodeIndex<Ix>) -> Option<&mut N> {
         self.nodes.get_mut(a.index()).and_then(|n| n.as_mut())
+    }
+
+    /// Add an edge from `a` to `b` to the graph, with its associated
+    /// data `weight`.
+    ///
+    /// Return the index of the new edge.
+    ///
+    /// Computes in **O(1)** time.
+    ///
+    /// - **Panics** if any of the nodes don't exist.
+    /// - **Panics** if there is an edge on the same node pair `(u, v)`.
+    /// - **Panics** if the node pair `(u, v)` is not a neighbor.
+    pub fn add_edge(&mut self, a: NodeIndex<Ix>, b: NodeIndex<Ix>, weight: E) -> EdgeIndex<Ix> {
+        let edge_idx = self.shape.edge_index_between(a.index(), b.index());
+
+        // direction
+        let direction = if self.is_directed() {
+            if a < b {
+                EdgeDirection::Outgoing
+            } else {
+                EdgeDirection::Incoming
+            }
+        } else {
+            EdgeDirection::Both
+        };
+
+        if let Some(edge) = self.edges.index_mut(edge_idx) {
+            match (edge.direction, direction) {
+                (EdgeDirection::Incoming, EdgeDirection::Outgoing)
+                | (EdgeDirection::Outgoing, EdgeDirection::Incoming) => {
+                    edge.direction = EdgeDirection::Both;
+                }
+                _ => {
+                    panic!(
+                        "Couldn't update the edge#{} with direction {} to direction {}",
+                        edge_idx, edge.direction, direction
+                    );
+                }
+            };
+        } else {
+            let edge = Edge { weight, direction };
+            self.edges[edge_idx] = Some(edge);
+        }
+
+        EdgeIndex::new(edge_idx)
     }
 
     /// Return an iterator over the node indices of the graph.
@@ -428,7 +571,7 @@ where
 {
     type Output = E;
     fn index(&self, index: EdgeIndex<Ix>) -> &E {
-        self.edges[index.index()].as_ref().unwrap()
+        &self.edges[index.index()].as_ref().unwrap().weight
     }
 }
 
@@ -441,6 +584,87 @@ where
     Ix: IndexType,
 {
     fn index_mut(&mut self, index: EdgeIndex<Ix>) -> &mut E {
-        self.edges[index.index()].as_mut().unwrap()
+        &mut self.edges[index.index()].as_mut().unwrap().weight
+    }
+}
+
+#[cfg(test)]
+mod grid_shape_tests {
+    use super::*;
+
+    #[test]
+    fn node_point() {
+        let shape = GridShape::new(3, 2);
+
+        assert_eq!(shape.node_point(0), GridPoint::new(0, 0));
+        assert_eq!(shape.node_point(2), GridPoint::new(2, 0));
+        assert_eq!(shape.node_point(3), GridPoint::new(0, 1));
+        assert_eq!(shape.node_point(5), GridPoint::new(2, 1));
+    }
+
+    #[test]
+    fn edge_index_between() {
+        let shape = GridShape::new(3, 2);
+
+        // *---*...o...
+        // :   :   :
+        // o...o...o...
+        assert_eq!(shape.edge_index_between(0, 1), 0);
+        assert_eq!(shape.edge_index_between(1, 0), 0);
+        // *...o...o...
+        // |   :   :
+        // *...o...o...
+        assert_eq!(shape.edge_index_between(0, 3), 3);
+        assert_eq!(shape.edge_index_between(3, 0), 3);
+        // o...o...o...
+        // :   :   :
+        // o...o---o...
+        assert_eq!(shape.edge_index_between(4, 5), 7);
+        assert_eq!(shape.edge_index_between(5, 4), 7);
+    }
+
+    #[test]
+    #[should_panic]
+    fn edge_index_between_same_node() {
+        let shape = GridShape::new(3, 2);
+        shape.edge_index_between(3, 3);
+    }
+}
+
+#[cfg(test)]
+mod grid_tests {
+    use super::*;
+
+    #[test]
+    fn add_node() {
+        let mut g = UnGridGraph::<&str, ()>::with_grid(3, 2);
+
+        let a = g.add_node("A");
+        let b = g.add_node("B");
+        let c = g.add_node("C");
+        let d = g.add_node("D");
+
+        assert_eq!(a, NodeIndex::new(0));
+        assert_eq!(b, NodeIndex::new(1));
+        assert_eq!(c, NodeIndex::new(2));
+        assert_eq!(d, NodeIndex::new(3));
+    }
+
+    #[test]
+    fn add_edge() {
+        let mut g = DiGridGraph::<&str, i32>::with_grid(3, 2);
+
+        let a = g.add_node("A");
+        let b = g.add_node("B");
+        let c = g.add_node("C");
+        let d = g.add_node("D");
+
+        let e1 = g.add_edge(a, b, 10);
+        let e2 = g.add_edge(b, c, 20);
+        let e3 = g.add_edge(a, d, 30);
+
+        assert_eq!(e1, EdgeIndex::new(0));
+        assert_eq!(e2, EdgeIndex::new(1));
+        assert_eq!(e3, EdgeIndex::new(3));
     }
 }
