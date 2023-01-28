@@ -218,6 +218,22 @@ where
         node_idx
     }
 
+    /// Access the weight for node `a`.
+    ///
+    /// If node `a` doesn't exist in the graph, return `None`.
+    /// Also available with indexing syntax: `&graph[a]`.
+    pub fn node_weight(&self, a: NodeIndex<Ix>) -> Option<&N> {
+        self.nodes.get(a.index()).and_then(|x| x.as_ref())
+    }
+
+    /// Access the weight for node `a`, mutably.
+    ///
+    /// If node `a` doesn't exist in the graph, return `None`.
+    /// Also available with indexing syntax: `&mut graph[a]`.
+    pub fn node_weight_mut(&mut self, a: NodeIndex<Ix>) -> Option<&mut N> {
+        self.nodes.get_mut(a.index()).and_then(|n| n.as_mut())
+    }
+
     /// Return an iterator over the node indices of the graph.
     ///
     /// For example, in a rare case where a graph algorithm were not applicable,
