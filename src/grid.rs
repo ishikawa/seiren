@@ -161,42 +161,42 @@ impl GridShape {
     }
 }
 
-/// Represents edge direction.
-///
-/// Suppose the edge connects `(u, v)` nodes where `u < v`:
-///
-/// - Incoming: the edge incidents to `u` (`u <-- v`).
-/// - Outgoing: the edge incidents to `v` (`u --> v`).
-/// - Both: the edge incidents to `u` and `v` (`u <--> v`).
-///
-/// **Note** if the graph is undirected, every edge has `Both` direction.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Display)]
-pub enum EdgeDirection {
-    Incoming,
-    Outgoing,
-    Both,
-}
-
 #[derive(Debug)]
-pub struct Edge<E> {
+pub struct Edge<E, Ix = DefaultIx> {
     weight: E,
-    direction: EdgeDirection,
+    source: NodeIndex<Ix>,
+    target: NodeIndex<Ix>,
 }
 
-impl<E> Clone for Edge<E>
+impl<E, Ix> Clone for Edge<E, Ix>
 where
     E: Clone,
+    Ix: Clone,
 {
     fn clone(&self) -> Self {
         Edge {
             weight: self.weight.clone(),
-            direction: self.direction.clone(),
+            source: self.source.clone(),
+            target: self.target.clone(),
         }
     }
 
     fn clone_from(&mut self, rhs: &Self) {
         self.weight = rhs.weight.clone();
-        self.direction = rhs.direction.clone();
+        self.source = rhs.source.clone();
+        self.target = rhs.target.clone();
+    }
+}
+
+impl<E, Ix: IndexType> Edge<E, Ix> {
+    /// Return the source node index.
+    pub fn source(&self) -> NodeIndex<Ix> {
+        self.source
+    }
+
+    /// Return the target node index.
+    pub fn target(&self) -> NodeIndex<Ix> {
+        self.target
     }
 }
 
@@ -208,7 +208,7 @@ pub struct GridGraph<N, E, Ty = Directed, Ix = DefaultIx> {
     // nodes = `m x n` vector
     nodes: Vec<Option<N>>,
     // nodes = `m x (n * 2 - 1)` vector
-    edges: Vec<Option<Edge<E>>>,
+    edges: Vec<Option<Edge<E, Ix>>>,
     ty: PhantomData<Ty>,
     ix: PhantomData<Ix>,
 }
@@ -344,35 +344,14 @@ where
     /// - **Panics** if the node pair `(u, v)` is not a neighbor.
     pub fn add_edge(&mut self, a: NodeIndex<Ix>, b: NodeIndex<Ix>, weight: E) -> EdgeIndex<Ix> {
         let edge_idx = self.shape.edge_index_between(a.index(), b.index());
+        assert!(self.edges[edge_idx].is_none());
 
-        // direction
-        let direction = if self.is_directed() {
-            if a < b {
-                EdgeDirection::Outgoing
-            } else {
-                EdgeDirection::Incoming
-            }
-        } else {
-            EdgeDirection::Both
+        let edge = Edge {
+            weight,
+            source: a,
+            target: b,
         };
-
-        if let Some(edge) = self.edges.index_mut(edge_idx) {
-            match (edge.direction, direction) {
-                (EdgeDirection::Incoming, EdgeDirection::Outgoing)
-                | (EdgeDirection::Outgoing, EdgeDirection::Incoming) => {
-                    edge.direction = EdgeDirection::Both;
-                }
-                _ => {
-                    panic!(
-                        "Couldn't update the edge#{} with direction {} to direction {}",
-                        edge_idx, edge.direction, direction
-                    );
-                }
-            };
-        } else {
-            let edge = Edge { weight, direction };
-            self.edges[edge_idx] = Some(edge);
-        }
+        self.edges[edge_idx] = Some(edge);
 
         EdgeIndex::new(edge_idx)
     }
@@ -666,5 +645,19 @@ mod grid_tests {
         assert_eq!(e1, EdgeIndex::new(0));
         assert_eq!(e2, EdgeIndex::new(1));
         assert_eq!(e3, EdgeIndex::new(3));
+    }
+
+    #[test]
+    #[should_panic]
+    fn add_edge_collision() {
+        let mut g = DiGridGraph::<&str, i32>::with_grid(3, 2);
+
+        let a = g.add_node("A");
+        let b = g.add_node("B");
+
+        g.add_edge(a, b, 10);
+
+        // We CAN'T update an existing edge even if the outgoing edge with an incoming edge.
+        g.add_edge(b, a, 10);
     }
 }
