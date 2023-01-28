@@ -130,9 +130,9 @@
 //! - **(m, n) grid** - the set of grid points `(x, y)` with:
 //!   - `0 <= x <= m`
 //!   - `0 <= y <= n`
-//! - Places each vertex of the graph `G = (V, E)` at each grid point.
-//! - The number of edges (degree) `d` connecting each vertex is `2 <= d <= 4`.
-//! - A sequence of connected vertices in a graph is called a *path*.
+//! - Places each vertex of an undirected graph `G = (V, E)` at each grid point.
+//! - The number of edges (degree) `d` connecting each vertex is `0 <= d <= 4`.
+//! - **Path** - A sequence of connected vertices in a graph is called a *path*.
 //!   - Only adjacent vertices on the grid can be connected.
 //!   - A vertex that is a start or target is not a path transit node.
 use crate::{

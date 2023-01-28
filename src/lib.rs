@@ -3,6 +3,7 @@ pub mod erd;
 pub mod error;
 pub mod evcxr;
 pub mod geometry;
+pub mod grid;
 pub mod layout;
 pub mod mir;
 pub mod parser;
