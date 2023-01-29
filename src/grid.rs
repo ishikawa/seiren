@@ -126,38 +126,50 @@ impl GridShape {
     }
 
     /// Computes the grid point of a node at `index`.
-    pub fn node_point(&self, index: usize) -> GridPoint {
-        assert!(index < self.node_bound());
+    pub fn node_point(&self, index: usize) -> Option<GridPoint> {
+        if index >= self.node_bound() {
+            return None;
+        }
 
         let x = index % self.columns as usize;
         let y = index / self.columns as usize;
 
-        GridPoint::new(x as u16, y as u16)
+        Some(GridPoint::new(x as u16, y as u16))
     }
 
     /// Computes edge index between node `a` and `b`.
     ///
-    /// - **Panics** if `a == b`.
-    /// - **Panics** if `a` or `b` is overflow.
-    /// - **Panics** if `a` and `b` aren't neighbors.
+    /// Returns `None` if:
+    /// - `a == b`.
+    /// - `a` or `b` is overflow.
+    /// - `a` and `b` aren't neighbors.
     ///
-    pub fn edge_index_between(&self, a: usize, b: usize) -> usize {
+    pub fn edge_index_between(&self, a: usize, b: usize) -> Option<usize> {
         let edge_bound = self.edge_bound();
-        assert!(a != b);
-        assert!(a < edge_bound);
-        assert!(b < edge_bound);
 
-        let u = self.node_point(a.min(b));
-        let v = self.node_point(b.max(a));
+        if a == b || a >= edge_bound || b >= edge_bound {
+            return None;
+        }
+
+        let u = self.node_point(a.min(b))?;
+        let v = self.node_point(b.max(a))?;
         assert!(u.x == v.x || u.y == v.y);
 
-        if u.y == v.y {
-            assert!(v.x - u.x == 1);
+        let edge_idx = if u.y == v.y {
+            if v.x - u.x != 1 {
+                return None;
+            }
+
             u.y() * 2 * self.columns() + u.x()
         } else {
-            assert!(v.y - u.y == 1);
+            if v.y - u.y != 1 {
+                return None;
+            }
+
             (u.y() * 2 + 1) * self.columns() + u.x()
-        }
+        };
+
+        Some(edge_idx)
     }
 }
 
@@ -343,7 +355,7 @@ where
     /// - **Panics** if there is an edge on the same node pair `(u, v)`.
     /// - **Panics** if the node pair `(u, v)` is not a neighbor.
     pub fn add_edge(&mut self, a: NodeIndex<Ix>, b: NodeIndex<Ix>, weight: E) -> EdgeIndex<Ix> {
-        let edge_idx = self.shape.edge_index_between(a.index(), b.index());
+        let edge_idx = self.shape.edge_index_between(a.index(), b.index()).unwrap();
         assert!(self.edges[edge_idx].is_none());
 
         let edge = Edge {
@@ -354,6 +366,73 @@ where
         self.edges[edge_idx] = Some(edge);
 
         EdgeIndex::new(edge_idx)
+    }
+
+    /// Add or update an edge from `a` to `b`.
+    /// If the edge already exists, its weight is updated.
+    ///
+    /// Return the index of the affected edge.
+    ///
+    /// Computes in **O(e')** time, where **e'** is the number of edges
+    /// connected to `a` (and `b`, if the graph edges are undirected).
+    ///
+    /// **Panics** if any of the nodes doesn't exist.
+    pub fn update_edge(&mut self, a: NodeIndex<Ix>, b: NodeIndex<Ix>, weight: E) -> EdgeIndex<Ix> {
+        if let Some(ix) = self.find_edge(a, b) {
+            if let Some(ed) = self.edge_weight_mut(ix) {
+                *ed = weight;
+                return ix;
+            }
+        }
+        self.add_edge(a, b, weight)
+    }
+
+    /// Access the weight for edge `e`.
+    ///
+    /// If edge `e` doesn't exist in the graph, return `None`.
+    /// Also available with indexing syntax: `&graph[e]`.
+    pub fn edge_weight(&self, e: EdgeIndex<Ix>) -> Option<&E> {
+        self.edges
+            .get(e.index())
+            .and_then(|opt| opt.as_ref().map(|ed| &ed.weight))
+    }
+
+    /// Access the weight for edge `e`, mutably.
+    ///
+    /// If edge `e` doesn't exist in the graph, return `None`.
+    /// Also available with indexing syntax: `&mut graph[e]`.
+    pub fn edge_weight_mut(&mut self, e: EdgeIndex<Ix>) -> Option<&mut E> {
+        self.edges
+            .get_mut(e.index())
+            .and_then(|opt| opt.as_mut().map(|ed| &mut ed.weight))
+    }
+
+    /// Access the source and target nodes for `e`.
+    ///
+    /// If edge `e` doesn't exist in the graph, return `None`.
+    pub fn edge_endpoints(&self, e: EdgeIndex<Ix>) -> Option<(NodeIndex<Ix>, NodeIndex<Ix>)> {
+        self.edges
+            .get(e.index())
+            .and_then(|opt| opt.as_ref().map(|ed| (ed.source(), ed.target())))
+    }
+
+    /// Lookup if there is an edge from `a` to `b`.
+    pub fn contains_edge(&self, a: NodeIndex<Ix>, b: NodeIndex<Ix>) -> bool {
+        self.find_edge(a, b).is_some()
+    }
+
+    /// Lookup an edge from `a` to `b`.
+    pub fn find_edge(&self, a: NodeIndex<Ix>, b: NodeIndex<Ix>) -> Option<EdgeIndex<Ix>> {
+        let edge_idx = self.shape.edge_index_between(a.index(), b.index())?;
+        let edge = self.edges.get(edge_idx)?;
+
+        if edge.is_none() {
+            None
+        } else if !self.is_directed() || edge.as_ref().unwrap().source() == a {
+            Some(EdgeIndex::new(edge_idx))
+        } else {
+            None
+        }
     }
 
     /// Return an iterator over the node indices of the graph.
@@ -575,10 +654,10 @@ mod grid_shape_tests {
     fn node_point() {
         let shape = GridShape::new(3, 2);
 
-        assert_eq!(shape.node_point(0), GridPoint::new(0, 0));
-        assert_eq!(shape.node_point(2), GridPoint::new(2, 0));
-        assert_eq!(shape.node_point(3), GridPoint::new(0, 1));
-        assert_eq!(shape.node_point(5), GridPoint::new(2, 1));
+        assert_eq!(shape.node_point(0), Some(GridPoint::new(0, 0)));
+        assert_eq!(shape.node_point(2), Some(GridPoint::new(2, 0)));
+        assert_eq!(shape.node_point(3), Some(GridPoint::new(0, 1)));
+        assert_eq!(shape.node_point(5), Some(GridPoint::new(2, 1)));
     }
 
     #[test]
@@ -588,25 +667,21 @@ mod grid_shape_tests {
         // *---*...o...
         // :   :   :
         // o...o...o...
-        assert_eq!(shape.edge_index_between(0, 1), 0);
-        assert_eq!(shape.edge_index_between(1, 0), 0);
+        assert_eq!(shape.edge_index_between(0, 1), Some(0));
+        assert_eq!(shape.edge_index_between(1, 0), Some(0));
         // *...o...o...
         // |   :   :
         // *...o...o...
-        assert_eq!(shape.edge_index_between(0, 3), 3);
-        assert_eq!(shape.edge_index_between(3, 0), 3);
+        assert_eq!(shape.edge_index_between(0, 3), Some(3));
+        assert_eq!(shape.edge_index_between(3, 0), Some(3));
         // o...o...o...
         // :   :   :
         // o...o---o...
-        assert_eq!(shape.edge_index_between(4, 5), 7);
-        assert_eq!(shape.edge_index_between(5, 4), 7);
-    }
+        assert_eq!(shape.edge_index_between(4, 5), Some(7));
+        assert_eq!(shape.edge_index_between(5, 4), Some(7));
 
-    #[test]
-    #[should_panic]
-    fn edge_index_between_same_node() {
-        let shape = GridShape::new(3, 2);
-        shape.edge_index_between(3, 3);
+        // not neighbors
+        assert!(shape.edge_index_between(3, 3).is_none());
     }
 }
 
@@ -630,7 +705,7 @@ mod grid_tests {
     }
 
     #[test]
-    fn add_edge() {
+    fn add_edges() {
         let mut g = DiGridGraph::<&str, i32>::with_grid(3, 2);
 
         let a = g.add_node("A");
@@ -645,6 +720,17 @@ mod grid_tests {
         assert_eq!(e1, EdgeIndex::new(0));
         assert_eq!(e2, EdgeIndex::new(1));
         assert_eq!(e3, EdgeIndex::new(3));
+
+        // get weight
+        assert_eq!(g.edge_weight(e1), Some(&10));
+        assert_eq!(g.edge_weight(e2), Some(&20));
+        assert_eq!(g.edge_weight(e3), Some(&30));
+
+        // find edge
+        assert_eq!(g.find_edge(a, b), Some(e1));
+        assert_eq!(g.find_edge(b, c), Some(e2));
+        assert_eq!(g.find_edge(a, d), Some(e3));
+        assert_eq!(g.find_edge(a, c), None);
     }
 
     #[test]
