@@ -10,6 +10,8 @@
 //! - The number of edges (degree) `d` connecting each vertex is `0 <= d <= 4`.
 //! - Only adjacent vertices on the grid can be connected.
 //! - **Path** - A sequence of connected vertices in a graph is called a *path*.
+//! - **Neighbors** - Nodes connecting by an edge.
+//! - **Adjacent nodes** - Nodes adjacent to a node.
 //!
 //! ```svgbob
 //! (0, 0)             (4, 0)
@@ -64,6 +66,7 @@ use derive_more::Display;
 use fixedbitset::FixedBitSet;
 use petgraph::graph::{EdgeIndex, IndexType, NodeIndex};
 use petgraph::{visit, Directed, EdgeType, Undirected};
+use smallvec::SmallVec;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 
@@ -137,12 +140,51 @@ impl GridShape {
         Some(GridPoint::new(x as u16, y as u16))
     }
 
+    pub fn to_node_index(&self, point: GridPoint) -> Option<usize> {
+        let i = point.x() + point.y() * self.columns();
+
+        if i >= self.node_bound() {
+            None
+        } else {
+            Some(i)
+        }
+    }
+
+    pub fn adjacent_node_indices(&self, index: usize) -> SmallVec<[usize; 4]> {
+        let mut v = SmallVec::with_capacity(4);
+
+        let Some(p) = self.node_point(index) else { return v };
+
+        // Left
+        if p.x > 0 {
+            let Some(q) = self.to_node_index(GridPoint::new(p.x - 1, p.y)) else { return v };
+            v.push(q);
+        }
+        // Right
+        if p.x < self.columns {
+            let Some(q) = self.to_node_index(GridPoint::new(p.x + 1, p.y)) else { return v };
+            v.push(q);
+        }
+        // Up
+        if p.y > 0 {
+            let Some(q) = self.to_node_index(GridPoint::new(p.x, p.y - 1)) else { return v };
+            v.push(q);
+        }
+        // Down
+        if p.y < self.rows {
+            let Some(q) = self.to_node_index(GridPoint::new(p.x, p.y + 1)) else { return v };
+            v.push(q);
+        }
+
+        v
+    }
+
     /// Computes edge index between node `a` and `b`.
     ///
     /// Returns `None` if:
     /// - `a == b`.
     /// - `a` or `b` is overflow.
-    /// - `a` and `b` aren't neighbors.
+    /// - `a` and `b` aren't adjacent nodes.
     ///
     pub fn edge_index_between(&self, a: usize, b: usize) -> Option<usize> {
         let edge_bound = self.edge_bound();
@@ -353,7 +395,7 @@ where
     ///
     /// - **Panics** if any of the nodes don't exist.
     /// - **Panics** if there is an edge on the same node pair `(u, v)`.
-    /// - **Panics** if the node pair `(u, v)` is not a neighbor.
+    /// - **Panics** if the node pair `(u, v)` is not a adjacent nodes.
     pub fn add_edge(&mut self, a: NodeIndex<Ix>, b: NodeIndex<Ix>, weight: E) -> EdgeIndex<Ix> {
         let edge_idx = self.shape.edge_index_between(a.index(), b.index()).unwrap();
         assert!(self.edges[edge_idx].is_none());
@@ -414,6 +456,23 @@ where
         self.edges
             .get(e.index())
             .and_then(|opt| opt.as_ref().map(|ed| (ed.source(), ed.target())))
+    }
+
+    /// Remove `a` from the graph if it exists, and return its weight.
+    /// If it doesn't exist in the graph, return `None`.
+    pub fn remove_node(&mut self, a: NodeIndex<Ix>) -> Option<N> {
+        let node_idx = a.index();
+
+        self.nodes.get(node_idx)?;
+
+        let weight = std::mem::replace(&mut self.nodes[node_idx], None);
+
+        for i in self.shape.adjacent_node_indices(node_idx) {
+            let Some(edge_idx) = self.shape.edge_index_between(node_idx, i) else { continue };
+            self.edges[edge_idx] = None;
+        }
+
+        weight
     }
 
     /// Lookup if there is an edge from `a` to `b`.
@@ -731,6 +790,11 @@ mod grid_tests {
         assert_eq!(g.find_edge(b, c), Some(e2));
         assert_eq!(g.find_edge(a, d), Some(e3));
         assert_eq!(g.find_edge(a, c), None);
+
+        // remove node
+        assert_eq!(g.remove_node(b), Some("B"));
+        assert_eq!(g.find_edge(a, b), None);
+        assert_eq!(g.find_edge(b, c), None);
     }
 
     #[test]
