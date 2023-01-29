@@ -475,6 +475,16 @@ where
         weight
     }
 
+    /// Remove an edge and return its edge weight, or `None` if it didn't exist.
+    pub fn remove_edge(&mut self, e: EdgeIndex<Ix>) -> Option<E> {
+        let edge_idx = e.index();
+
+        self.edges.get(edge_idx)?;
+
+        let e = std::mem::replace(&mut self.edges[edge_idx], None);
+        e.map(|e| e.weight)
+    }
+
     /// Lookup if there is an edge from `a` to `b`.
     pub fn contains_edge(&self, a: NodeIndex<Ix>, b: NodeIndex<Ix>) -> bool {
         self.find_edge(a, b).is_some()
@@ -795,6 +805,41 @@ mod grid_tests {
         assert_eq!(g.remove_node(b), Some("B"));
         assert_eq!(g.find_edge(a, b), None);
         assert_eq!(g.find_edge(b, c), None);
+    }
+
+    #[test]
+    fn remove_node() {
+        let mut g = DiGridGraph::<&str, i32>::with_grid(3, 2);
+
+        let a = g.add_node("A");
+        let b = g.add_node("B");
+        let c = g.add_node("C");
+        let _ = g.add_node("D");
+
+        assert_eq!(g.remove_node(b), Some("B"));
+        assert_eq!(g.find_edge(a, b), None);
+        assert_eq!(g.find_edge(b, c), None);
+    }
+
+    #[test]
+    fn remove_edge() {
+        let mut g = DiGridGraph::<&str, i32>::with_grid(3, 2);
+
+        let a = g.add_node("A");
+        let b = g.add_node("B");
+        let c = g.add_node("C");
+        let d = g.add_node("D");
+
+        let e1 = g.add_edge(a, b, 10);
+        let e2 = g.add_edge(b, c, 20);
+        let e3 = g.add_edge(a, d, 30);
+
+        assert_eq!(g.remove_edge(e1), Some(10));
+        assert_eq!(g.find_edge(a, b), None);
+        assert_eq!(g.remove_edge(e2), Some(20));
+        assert_eq!(g.find_edge(b, c), None);
+        assert_eq!(g.remove_edge(e3), Some(30));
+        assert_eq!(g.find_edge(a, d), None);
     }
 
     #[test]
