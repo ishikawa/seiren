@@ -65,6 +65,7 @@
 use derive_more::Display;
 use fixedbitset::FixedBitSet;
 use petgraph::graph::{EdgeIndex, IndexType, NodeIndex};
+use petgraph::Direction::{self, Outgoing};
 use petgraph::{visit, Directed, EdgeType, Undirected};
 use smallvec::SmallVec;
 use std::marker::PhantomData;
@@ -110,6 +111,7 @@ impl GridShape {
         self.columns as usize
     }
 
+    #[allow(unused)]
     pub fn rows(&self) -> usize {
         self.rows as usize
     }
@@ -485,6 +487,53 @@ where
         e.map(|e| e.weight)
     }
 
+    /// Return an iterator of all edges of `a`.
+    ///
+    /// - `Directed`: Outgoing edges from `a`.
+    /// - `Undirected`: All edges connected to `a`.
+    ///
+    /// Produces an empty iterator if the node doesn't exist.<br>
+    /// Iterator element type is `EdgeReference<E, Ix>`.
+    pub fn edges(&self, a: NodeIndex<Ix>) -> std::vec::IntoIter<EdgeReference<'_, E, Ix>> {
+        self.edges_directed(a, Outgoing)
+    }
+
+    /// Return an iterator of all edges of `a`, in the specified direction.
+    ///
+    /// - `Directed`, `Outgoing`: All edges from `a`.
+    /// - `Directed`, `Incoming`: All edges to `a`.
+    /// - `Undirected`: All edges connected to `a`.
+    ///
+    /// Produces an empty iterator if the node `a` doesn't exist.
+    pub fn edges_directed(
+        &self,
+        a: NodeIndex<Ix>,
+        dir: Direction,
+    ) -> std::vec::IntoIter<EdgeReference<'_, E, Ix>> {
+        self.shape
+            .adjacent_node_indices(a.index())
+            .iter()
+            .flat_map(|node_idx| {
+                if dir == Outgoing {
+                    self.find_edge(a, NodeIndex::new(*node_idx))
+                } else {
+                    self.find_edge(NodeIndex::new(*node_idx), a)
+                }
+            })
+            .map(|edge_index| {
+                let edge = self.edges[edge_index.index()].as_ref().unwrap();
+
+                EdgeReference {
+                    index: edge_index,
+                    source: edge.source(),
+                    target: edge.target(),
+                    weight: &edge.weight,
+                }
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+
     /// Lookup if there is an edge from `a` to `b`.
     pub fn contains_edge(&self, a: NodeIndex<Ix>, b: NodeIndex<Ix>) -> bool {
         self.find_edge(a, b).is_some()
@@ -526,6 +575,69 @@ where
             .collect::<Vec<_>>();
 
         NodeIdentifiers::new(IndexIterator::new(indices))
+    }
+}
+
+/// Reference to a `Graph` edge.
+#[derive(Debug)]
+pub struct EdgeReference<'a, E: 'a, Ix = DefaultIx> {
+    index: EdgeIndex<Ix>,
+    source: NodeIndex<Ix>,
+    target: NodeIndex<Ix>,
+    weight: &'a E,
+}
+
+impl<'a, E, Ix: IndexType> EdgeReference<'a, E, Ix> {
+    pub fn source(&self) -> NodeIndex<Ix> {
+        self.source
+    }
+    pub fn target(&self) -> NodeIndex<Ix> {
+        self.target
+    }
+    pub fn weight(&self) -> &E {
+        self.weight
+    }
+    pub fn index(&self) -> EdgeIndex<Ix> {
+        self.index
+    }
+}
+
+impl<'a, E, Ix: IndexType> Clone for EdgeReference<'a, E, Ix> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<'a, E, Ix: IndexType> Copy for EdgeReference<'a, E, Ix> {}
+
+impl<'a, E, Ix: IndexType> PartialEq for EdgeReference<'a, E, Ix>
+where
+    E: PartialEq,
+{
+    fn eq(&self, rhs: &Self) -> bool {
+        self.index == rhs.index && self.weight == rhs.weight
+    }
+}
+
+impl<'a, Ix, E> visit::EdgeRef for EdgeReference<'a, E, Ix>
+where
+    Ix: IndexType,
+{
+    type NodeId = NodeIndex<Ix>;
+    type EdgeId = EdgeIndex<Ix>;
+    type Weight = E;
+
+    fn source(&self) -> Self::NodeId {
+        self.source()
+    }
+    fn target(&self) -> Self::NodeId {
+        self.target()
+    }
+    fn weight(&self) -> &E {
+        self.weight()
+    }
+    fn id(&self) -> Self::EdgeId {
+        self.index()
     }
 }
 
@@ -690,6 +802,19 @@ where
     }
 }
 
+// TODO: IntoEdges required for dijkstra
+// impl<'a, N, E, Ty, Ix> visit::IntoEdges for &'a GridGraph<N, E, Ty, Ix>
+// where
+//     Ty: EdgeType,
+//     Ix: IndexType,
+// {
+//     type Edges = std::vec::IntoIter<EdgeReference<'a, E, Ix>>;
+
+//     fn edges(self, a: Self::NodeId) -> Self::Edges {
+//         self.edges(a)
+//     }
+// }
+
 /// Index the `Graph` by `NodeIndex` to access node weights.
 ///
 /// **Panics** if the node doesn't exist.
@@ -830,10 +955,18 @@ mod grid_tests {
         assert_eq!(g.find_edge(a, d), Some(e3));
         assert_eq!(g.find_edge(a, c), None);
 
+        // edges
+        assert_eq!(g.edges(a).map(|r| r.index()).collect::<Vec<_>>(), &[e1, e3]);
+
         // remove node
         assert_eq!(g.remove_node(b), Some("B"));
         assert_eq!(g.find_edge(a, b), None);
         assert_eq!(g.find_edge(b, c), None);
+        assert_eq!(g.edges(a).map(|r| r.index()).collect::<Vec<_>>(), &[e3]);
+
+        assert_eq!(g.remove_node(d), Some("D"));
+        assert_eq!(g.find_edge(a, d), None);
+        assert_eq!(g.edges(a).map(|r| r.index()).collect::<Vec<_>>(), &[]);
     }
 
     #[test]
