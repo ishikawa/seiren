@@ -661,6 +661,35 @@ where
     }
 }
 
+impl<N, E, Ty, Ix> visit::EdgeCount for GridGraph<N, E, Ty, Ix>
+where
+    Ty: EdgeType,
+    Ix: IndexType,
+{
+    #[inline]
+    fn edge_count(&self) -> usize {
+        self.edge_count()
+    }
+}
+
+impl<N, E, Ty, Ix> visit::EdgeIndexable for GridGraph<N, E, Ty, Ix>
+where
+    Ty: EdgeType,
+    Ix: IndexType,
+{
+    fn edge_bound(&self) -> usize {
+        self.edge_count()
+    }
+
+    fn to_index(&self, ix: EdgeIndex<Ix>) -> usize {
+        ix.index()
+    }
+
+    fn from_index(&self, ix: usize) -> Self::EdgeId {
+        EdgeIndex::new(ix)
+    }
+}
+
 /// Index the `Graph` by `NodeIndex` to access node weights.
 ///
 /// **Panics** if the node doesn't exist.
