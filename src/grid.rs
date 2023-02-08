@@ -565,16 +565,14 @@ where
     /// # g.add_node("book");
     /// let index = g.node_indices().find(|i| g[*i] == "book").unwrap();
     /// ```
-    pub fn node_indices(&self) -> NodeIdentifiers<Ix> {
-        let indices = self
-            .nodes
+    pub fn node_indices(&self) -> std::vec::IntoIter<NodeIndex<Ix>> {
+        self.nodes
             .iter()
             .enumerate()
             .filter(|(_, x)| x.is_some())
-            .filter_map(|(i, _)| Some(i))
-            .collect::<Vec<_>>();
-
-        NodeIdentifiers::new(IndexIterator::new(indices))
+            .filter_map(|(i, _)| Some(NodeIndex::new(i)))
+            .collect::<Vec<_>>()
+            .into_iter()
     }
 }
 
@@ -641,64 +639,6 @@ where
     }
 }
 
-#[derive(Debug, Clone)]
-struct IndexIterator {
-    indices: Vec<usize>,
-    current: usize,
-}
-
-impl IndexIterator {
-    fn new(indices: Vec<usize>) -> Self {
-        Self {
-            indices,
-            current: 0,
-        }
-    }
-}
-
-impl Iterator for IndexIterator {
-    type Item = usize;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        // initialize / advance
-        let i = self.current;
-
-        self.current += 1;
-
-        if i < self.indices.len() {
-            Some(self.indices[i])
-        } else {
-            None
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct NodeIdentifiers<Ix> {
-    iter: IndexIterator,
-    ix: PhantomData<Ix>,
-}
-
-impl<'a, Ix: IndexType> NodeIdentifiers<Ix> {
-    fn new(iter: IndexIterator) -> Self {
-        Self {
-            iter,
-            ix: PhantomData,
-        }
-    }
-}
-
-impl<Ix: IndexType> Iterator for NodeIdentifiers<Ix> {
-    type Item = NodeIndex<Ix>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(NodeIndex::new)
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-}
-
 impl<N, E, Ty, Ix> visit::GraphBase for GridGraph<N, E, Ty, Ix>
 where
     Ix: IndexType,
@@ -737,7 +677,7 @@ where
     Ty: EdgeType,
     Ix: IndexType,
 {
-    type NodeIdentifiers = NodeIdentifiers<Ix>;
+    type NodeIdentifiers = std::vec::IntoIter<Self::NodeId>;
 
     fn node_identifiers(self) -> Self::NodeIdentifiers {
         self.node_indices()
@@ -802,7 +742,7 @@ where
     }
 }
 
-// TODO: IntoEdges required for dijkstra
+//TODO: IntoEdges required for dijkstra
 // impl<'a, N, E, Ty, Ix> visit::IntoEdges for &'a GridGraph<N, E, Ty, Ix>
 // where
 //     Ty: EdgeType,
@@ -814,6 +754,18 @@ where
 //         self.edges(a)
 //     }
 // }
+
+impl<'a, N, E, Ty, Ix> visit::IntoNeighbors for &'a GridGraph<N, E, Ty, Ix>
+where
+    Ty: EdgeType,
+    Ix: IndexType,
+{
+    type Neighbors = std::vec::IntoIter<Self::NodeId>;
+
+    fn neighbors(self, a: Self::NodeId) -> Self::Neighbors {
+        todo!()
+    }
+}
 
 /// Index the `Graph` by `NodeIndex` to access node weights.
 ///
