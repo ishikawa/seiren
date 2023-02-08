@@ -62,9 +62,11 @@
 //!             o...o...o
 //! (0, 9)             (4, 9)
 //! ```
+use chumsky::primitive::todo;
 use derive_more::Display;
 use fixedbitset::FixedBitSet;
 use petgraph::graph::{EdgeIndex, IndexType, NodeIndex};
+use petgraph::visit::EdgeRef;
 use petgraph::Direction::{self, Outgoing};
 use petgraph::{visit, Directed, EdgeType, Undirected};
 use smallvec::SmallVec;
@@ -487,6 +489,44 @@ where
         e.map(|e| e.weight)
     }
 
+    /// Return an iterator of all nodes with an edge starting from `a`.
+    ///
+    /// - `Directed`: Outgoing edges from `a`.
+    /// - `Undirected`: All edges from or to `a`.
+    ///
+    /// Produces an empty iterator if the node doesn't exist.<br>
+    /// Iterator element type is `NodeIndex<Ix>`.
+    pub fn neighbors(&self, a: NodeIndex<Ix>) -> std::vec::IntoIter<NodeIndex<Ix>> {
+        self.neighbors_directed(a, Outgoing)
+    }
+
+    /// Return an iterator of all neighbors that have an edge between them and
+    /// `a`, in the specified direction.
+    /// If the graph's edges are undirected, this is equivalent to *.neighbors(a)*.
+    ///
+    /// - `Directed`, `Outgoing`: All edges from `a`.
+    /// - `Directed`, `Incoming`: All edges to `a`.
+    /// - `Undirected`: All edges from or to `a`.
+    ///
+    /// Produces an empty iterator if the node doesn't exist.<br>
+    /// Iterator element type is `NodeIndex<Ix>`.
+    pub fn neighbors_directed(
+        &self,
+        a: NodeIndex<Ix>,
+        dir: Direction,
+    ) -> std::vec::IntoIter<NodeIndex<Ix>> {
+        self.edges_directed(a, dir)
+            .map(|e| {
+                if e.source() == a {
+                    e.target()
+                } else {
+                    e.source()
+                }
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+
     /// Return an iterator of all edges of `a`.
     ///
     /// - `Directed`: Outgoing edges from `a`.
@@ -763,7 +803,7 @@ where
     type Neighbors = std::vec::IntoIter<Self::NodeId>;
 
     fn neighbors(self, a: Self::NodeId) -> Self::Neighbors {
-        todo!()
+        self.neighbors(a)
     }
 }
 
@@ -862,6 +902,8 @@ mod grid_shape_tests {
 
 #[cfg(test)]
 mod grid_tests {
+    use std::collections::HashSet;
+
     use super::*;
 
     #[test]
@@ -954,6 +996,54 @@ mod grid_tests {
         assert_eq!(g.find_edge(b, c), None);
         assert_eq!(g.remove_edge(e3), Some(30));
         assert_eq!(g.find_edge(a, d), None);
+    }
+
+    #[test]
+    fn neighbors_undirected() {
+        // A --- B
+        // |     :
+        // C --- D
+        // TODO: The order of the `columns` and `rows` should be more clearer.
+        let mut g = UnGridGraph::<&str, ()>::with_grid(2, 2);
+
+        let a = g.add_node("A");
+        let b = g.add_node("B");
+        let c = g.add_node("C");
+        let d = g.add_node("D");
+
+        g.add_edge(a, b, ());
+        g.add_edge(a, c, ());
+
+        let neighbors = g.neighbors(a).collect::<HashSet<_>>();
+
+        assert_eq!(neighbors.len(), 2);
+        assert!(neighbors.contains(&b));
+        assert!(neighbors.contains(&c));
+        assert!(!neighbors.contains(&d));
+    }
+
+    #[test]
+    fn neighbors_directed_outgoing() {
+        // A ---> B
+        // ^      :
+        // |      :
+        // C ---- D
+        let mut g = DiGridGraph::<&str, ()>::with_grid(2, 2);
+
+        let a = g.add_node("A");
+        let b = g.add_node("B");
+        let c = g.add_node("C");
+        let d = g.add_node("D");
+
+        g.add_edge(a, b, ());
+        g.add_edge(c, a, ());
+
+        let neighbors = g.neighbors(a).collect::<HashSet<_>>();
+
+        assert_eq!(neighbors.len(), 1);
+        assert!(neighbors.contains(&b));
+        assert!(!neighbors.contains(&c));
+        assert!(!neighbors.contains(&d));
     }
 
     #[test]
