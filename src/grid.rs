@@ -525,46 +525,6 @@ where
             .into_iter()
     }
 
-    /// Return an iterator of all edges of `a`.
-    ///
-    /// - `Directed`: Outgoing edges from `a`.
-    /// - `Undirected`: All edges connected to `a`.
-    ///
-    /// Produces an empty iterator if the node doesn't exist.<br>
-    /// Iterator element type is `EdgeReference<E, Ix>`.
-    pub fn edges(&self, a: NodeIndex<Ix>) -> std::vec::IntoIter<EdgeReference<'_, E, Ix>> {
-        self.edges_directed(a, Outgoing)
-    }
-
-    /// Return an iterator over the edge indices of the graph
-    pub fn edge_indices(&self) -> std::vec::IntoIter<EdgeIndex<Ix>> {
-        self.edges
-            .iter()
-            .enumerate()
-            .filter_map(|(i, e)| e.as_ref().and_then(|_| Some(EdgeIndex::new(i))))
-            .collect::<Vec<_>>()
-            .into_iter()
-    }
-
-    /// Create an iterator over all edges, in indexed order.
-    ///
-    /// Iterator element type is `EdgeReference<E, Ix>`.
-    pub fn edge_references(&self) -> std::vec::IntoIter<EdgeReference<'_, E, Ix>> {
-        self.edges
-            .iter()
-            .enumerate()
-            .filter_map(|(i, e)| {
-                e.as_ref().map(|edge| EdgeReference {
-                    index: EdgeIndex::new(i),
-                    source: edge.source(),
-                    target: edge.target(),
-                    weight: &edge.weight,
-                })
-            })
-            .collect::<Vec<_>>()
-            .into_iter()
-    }
-
     /// Return an iterator of all edges of `a`, in the specified direction.
     ///
     /// - `Directed`, `Outgoing`: All edges from `a`.
@@ -636,8 +596,53 @@ where
         self.nodes
             .iter()
             .enumerate()
-            .filter(|(_, x)| x.is_some())
-            .filter_map(|(i, _)| Some(NodeIndex::new(i)))
+            .filter_map(|(i, n)| n.as_ref().and_then(|_| Some(NodeIndex::new(i))))
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+
+    /// Return an iterator of all edges of `a`.
+    ///
+    /// - `Directed`: Outgoing edges from `a`.
+    /// - `Undirected`: All edges connected to `a`.
+    ///
+    /// Produces an empty iterator if the node doesn't exist.<br>
+    /// Iterator element type is `EdgeReference<E, Ix>`.
+    pub fn edges(&self, a: NodeIndex<Ix>) -> std::vec::IntoIter<EdgeReference<'_, E, Ix>> {
+        self.edges_directed(a, Outgoing)
+    }
+
+    /// Return an iterator over the edge indices of the graph
+    pub fn edge_indices(&self) -> std::vec::IntoIter<EdgeIndex<Ix>> {
+        self.edges
+            .iter()
+            .enumerate()
+            .filter_map(|(i, e)| e.as_ref().and_then(|_| Some(EdgeIndex::new(i))))
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+
+    /// Create an iterator over all edges, in indexed order.
+    pub fn edge_references(&self) -> std::vec::IntoIter<EdgeReference<'_, E, Ix>> {
+        self.edges
+            .iter()
+            .enumerate()
+            .filter_map(|(i, e)| {
+                e.as_ref().map(|edge| EdgeReference {
+                    index: EdgeIndex::new(i),
+                    source: edge.source(),
+                    target: edge.target(),
+                    weight: &edge.weight,
+                })
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+
+    /// Return an iterator yielding immutable access to all edge weights.
+    pub fn edge_weights(&self) -> std::vec::IntoIter<&E> {
+        self.edge_indices()
+            .filter_map(|i| self.edge_weight(i))
             .collect::<Vec<_>>()
             .into_iter()
     }
@@ -1102,6 +1107,28 @@ mod grid_tests {
         assert!(neighbors.contains(&b));
         assert!(!neighbors.contains(&c));
         assert!(!neighbors.contains(&d));
+    }
+
+    #[test]
+    fn nodes() {
+        // A .... B
+        // :      :
+        // :      :
+        // C .... D
+        let mut g = DiGridGraph::<&str, ()>::with_grid(2, 2);
+
+        let a = g.add_node("A");
+        let b = g.add_node("B");
+        let c = g.add_node("C");
+        let d = g.add_node("D");
+
+        let indices = g.node_indices().collect::<HashSet<_>>();
+
+        assert_eq!(indices.len(), 4);
+        assert!(indices.contains(&a));
+        assert!(indices.contains(&b));
+        assert!(indices.contains(&c));
+        assert!(indices.contains(&d));
     }
 
     #[test]
