@@ -97,7 +97,7 @@ impl GridPoint {
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Display)]
 #[display(fmt = "({}, {})", columns, rows)]
 /// The number of columns and rows of a `(m, n)` grid.
-struct GridShape {
+pub struct GridShape {
     pub columns: u16, // m
     pub rows: u16,    // n
 }
@@ -306,8 +306,7 @@ where
     Ix: IndexType,
 {
     /// Create a new `GridGraph` with `m x n` grid.
-    pub fn with_grid(columns: u16, rows: u16) -> Self {
-        let shape = GridShape { columns, rows };
+    pub fn with_shape(shape: GridShape) -> Self {
         let node_bound = shape.node_bound();
         let edge_bound = shape.edge_bound();
         let mut nodes = Vec::with_capacity(node_bound);
@@ -583,8 +582,8 @@ where
     /// specific index:
     ///
     /// ```
-    /// # use seiren::grid::GridGraph;
-    /// # let mut g = GridGraph::<&str, i32>::with_grid(1, 1);
+    /// # use seiren::grid::{GridGraph, GridShape};
+    /// # let mut g = GridGraph::<&str, i32>::with_shape(GridShape { columns: 1, rows: 1 });
     /// # g.add_node("book");
     /// let index = g.node_indices().find(|i| g[*i] == "book").unwrap();
     /// ```
@@ -981,7 +980,10 @@ mod grid_tests {
 
     #[test]
     fn add_node() {
-        let mut g = UnGridGraph::<&str, ()>::with_grid(3, 2);
+        let mut g = UnGridGraph::<&str, ()>::with_shape(GridShape {
+            columns: 3,
+            rows: 2,
+        });
 
         let a = g.add_node("A");
         let b = g.add_node("B");
@@ -996,7 +998,10 @@ mod grid_tests {
 
     #[test]
     fn add_edges() {
-        let mut g = DiGridGraph::<&str, i32>::with_grid(3, 2);
+        let mut g = DiGridGraph::<&str, i32>::with_shape(GridShape {
+            columns: 3,
+            rows: 2,
+        });
 
         let a = g.add_node("A");
         let b = g.add_node("B");
@@ -1038,7 +1043,10 @@ mod grid_tests {
 
     #[test]
     fn remove_node() {
-        let mut g = DiGridGraph::<&str, i32>::with_grid(3, 2);
+        let mut g = DiGridGraph::<&str, i32>::with_shape(GridShape {
+            columns: 3,
+            rows: 2,
+        });
 
         let a = g.add_node("A");
         let b = g.add_node("B");
@@ -1052,7 +1060,10 @@ mod grid_tests {
 
     #[test]
     fn remove_edge() {
-        let mut g = DiGridGraph::<&str, i32>::with_grid(3, 2);
+        let mut g = DiGridGraph::<&str, i32>::with_shape(GridShape {
+            columns: 3,
+            rows: 2,
+        });
 
         let a = g.add_node("A");
         let b = g.add_node("B");
@@ -1076,8 +1087,10 @@ mod grid_tests {
         // A --- B
         // |     :
         // C --- D
-        // TODO: The order of the `columns` and `rows` should be more clearer.
-        let mut g = UnGridGraph::<&str, ()>::with_grid(2, 2);
+        let mut g = UnGridGraph::<&str, ()>::with_shape(GridShape {
+            columns: 2,
+            rows: 2,
+        });
 
         let a = g.add_node("A");
         let b = g.add_node("B");
@@ -1101,7 +1114,10 @@ mod grid_tests {
         // ^      :
         // |      :
         // C .... D
-        let mut g = DiGridGraph::<&str, ()>::with_grid(2, 2);
+        let mut g = DiGridGraph::<&str, ()>::with_shape(GridShape {
+            columns: 2,
+            rows: 2,
+        });
 
         let a = g.add_node("A");
         let b = g.add_node("B");
@@ -1125,7 +1141,10 @@ mod grid_tests {
         // :      :
         // :      :
         // C .... D
-        let mut g = DiGridGraph::<&str, ()>::with_grid(2, 2);
+        let mut g = UnGridGraph::<&str, ()>::with_shape(GridShape {
+            columns: 2,
+            rows: 2,
+        });
 
         let a = g.add_node("A");
         let b = g.add_node("B");
@@ -1155,7 +1174,10 @@ mod grid_tests {
         // :      :
         // :      :
         // C .... D
-        let mut g = DiGridGraph::<&str, ()>::with_grid(2, 2);
+        let mut g = DiGridGraph::<&str, ()>::with_shape(GridShape {
+            columns: 2,
+            rows: 2,
+        });
 
         let a = g.add_node("A");
         let b = g.add_node("B");
@@ -1198,7 +1220,10 @@ mod grid_tests {
     #[test]
     #[should_panic]
     fn add_edge_collision() {
-        let mut g = DiGridGraph::<&str, i32>::with_grid(3, 2);
+        let mut g = DiGridGraph::<&str, i32>::with_shape(GridShape {
+            columns: 3,
+            rows: 2,
+        });
 
         let a = g.add_node("A");
         let b = g.add_node("B");
