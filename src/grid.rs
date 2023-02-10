@@ -536,6 +536,16 @@ where
         self.edges_directed(a, Outgoing)
     }
 
+    /// Return an iterator over the edge indices of the graph
+    pub fn edge_indices(&self) -> std::vec::IntoIter<EdgeIndex<Ix>> {
+        self.edges
+            .iter()
+            .enumerate()
+            .filter_map(|(i, e)| e.as_ref().and_then(|_| Some(EdgeIndex::new(i))))
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+
     /// Create an iterator over all edges, in indexed order.
     ///
     /// Iterator element type is `EdgeReference<E, Ix>`.
@@ -951,11 +961,8 @@ mod grid_shape_tests {
 
 #[cfg(test)]
 mod grid_tests {
-    use std::collections::{HashMap, HashSet};
-
-    use petgraph::visit::EdgeRef;
-
     use super::*;
+    use std::collections::{HashMap, HashSet};
 
     #[test]
     fn add_node() {
@@ -1098,7 +1105,7 @@ mod grid_tests {
     }
 
     #[test]
-    fn edge_references() {
+    fn edges() {
         // A .... B
         // :      :
         // :      :
@@ -1108,9 +1115,10 @@ mod grid_tests {
         let a = g.add_node("A");
         let b = g.add_node("B");
         let c = g.add_node("C");
-        let d = g.add_node("D");
+        let _ = g.add_node("D");
 
         assert_eq!(g.edge_references().collect::<Vec<_>>().len(), 0);
+        assert_eq!(g.edge_indices().collect::<Vec<_>>().len(), 0);
 
         // A ---> B
         // ^      :
@@ -1124,18 +1132,22 @@ mod grid_tests {
             .edge_references()
             .map(|e| (e.index(), e))
             .collect::<HashMap<_, _>>();
+        let indices = g.edge_indices().collect::<HashSet<_>>();
 
         assert_eq!(edges.len(), 2);
+        assert_eq!(indices.len(), 2);
 
         let r1 = edges.get(&e1);
         assert!(r1.is_some());
         assert_eq!(r1.unwrap().source(), a);
         assert_eq!(r1.unwrap().target(), b);
+        assert!(indices.contains(&e1));
 
         let r2 = edges.get(&e2);
         assert!(r2.is_some());
         assert_eq!(r2.unwrap().source(), c);
         assert_eq!(r2.unwrap().target(), a);
+        assert!(indices.contains(&e2));
     }
 
     #[test]
