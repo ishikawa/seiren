@@ -1,4 +1,4 @@
-//! Graph embedded on a graph.
+//! Graph embedded on a grid.
 //!
 //! ## Definition
 //!
@@ -82,10 +82,6 @@ pub struct GridPoint {
 }
 
 impl GridPoint {
-    pub fn new(x: u16, y: u16) -> Self {
-        Self { x, y }
-    }
-
     pub fn x(&self) -> usize {
         self.x as usize
     }
@@ -135,7 +131,10 @@ impl GridShape {
         let x = index % self.columns as usize;
         let y = index / self.columns as usize;
 
-        Some(GridPoint::new(x as u16, y as u16))
+        Some(GridPoint {
+            x: x as u16,
+            y: y as u16,
+        })
     }
 
     pub fn to_node_index(&self, point: GridPoint) -> Option<usize> {
@@ -155,22 +154,22 @@ impl GridShape {
 
         // Left
         if p.x > 0 {
-            let Some(q) = self.to_node_index(GridPoint::new(p.x - 1, p.y)) else { return v };
+            let Some(q) = self.to_node_index(GridPoint { x: p.x - 1, y: p.y }) else { return v };
             v.push(q);
         }
         // Right
         if p.x < self.columns {
-            let Some(q) = self.to_node_index(GridPoint::new(p.x + 1, p.y)) else { return v };
+            let Some(q) = self.to_node_index(GridPoint { x: p.x + 1, y: p.y }) else { return v };
             v.push(q);
         }
         // Up
         if p.y > 0 {
-            let Some(q) = self.to_node_index(GridPoint::new(p.x, p.y - 1)) else { return v };
+            let Some(q) = self.to_node_index(GridPoint { x: p.x, y: p.y - 1 }) else { return v };
             v.push(q);
         }
         // Down
         if p.y < self.rows {
-            let Some(q) = self.to_node_index(GridPoint::new(p.x, p.y + 1)) else { return v };
+            let Some(q) = self.to_node_index(GridPoint { x: p.x, y: p.y + 1 }) else { return v };
             v.push(q);
         }
 
@@ -365,6 +364,25 @@ where
         let node_idx = NodeIndex::new(idx.unwrap());
         self.nodes[node_idx.index()] = Some(weight);
         node_idx
+    }
+
+    /// Add or update a node with associated data `weight` at the index.
+    /// If the node already exists, its weight is updated.
+    ///
+    /// Return the index of the affected node.
+    pub fn update_node(&mut self, i: NodeIndex<Ix>, weight: N) -> NodeIndex<Ix> {
+        self.nodes[i.index()] = Some(weight);
+        return i;
+    }
+
+    /// Add or update a node with associated data `weight` at the index.
+    /// If the node already exists, its weight is updated.
+    ///
+    /// Return the index of the affected node.
+    pub fn update_node_on(&mut self, pt: GridPoint, weight: N) -> NodeIndex<Ix> {
+        let i = self.shape.to_node_index(pt).unwrap();
+        self.nodes[i] = Some(weight);
+        return NodeIndex::new(i);
     }
 
     /// Access the weight for node `a`.
@@ -939,10 +957,10 @@ mod grid_shape_tests {
             rows: 2,
         };
 
-        assert_eq!(shape.node_point(0), Some(GridPoint::new(0, 0)));
-        assert_eq!(shape.node_point(2), Some(GridPoint::new(2, 0)));
-        assert_eq!(shape.node_point(3), Some(GridPoint::new(0, 1)));
-        assert_eq!(shape.node_point(5), Some(GridPoint::new(2, 1)));
+        assert_eq!(shape.node_point(0), Some(GridPoint { x: 0, y: 0 }));
+        assert_eq!(shape.node_point(2), Some(GridPoint { x: 2, y: 0 }));
+        assert_eq!(shape.node_point(3), Some(GridPoint { x: 0, y: 1 }));
+        assert_eq!(shape.node_point(5), Some(GridPoint { x: 2, y: 1 }));
     }
 
     #[test]
@@ -1232,5 +1250,41 @@ mod grid_tests {
 
         // We CAN'T update an existing edge even if the outgoing edge with an incoming edge.
         g.add_edge(b, a, 10);
+    }
+
+    #[test]
+    fn update_node_on() {
+        // A ---> B ---> C
+        // ^      :      :
+        // |      :      :
+        // D .... o .... o
+        // |      :      :
+        // |      :      :
+        // E .... o .... o
+        let mut g = DiGridGraph::<&str, ()>::with_shape(GridShape {
+            columns: 3,
+            rows: 3,
+        });
+
+        let a = g.update_node_on(GridPoint { x: 0, y: 0 }, "A");
+        let b = g.update_node_on(GridPoint { x: 1, y: 0 }, "B");
+        let c = g.update_node_on(GridPoint { x: 2, y: 0 }, "C");
+        let d = g.update_node_on(GridPoint { x: 0, y: 1 }, "D");
+        let e = g.update_node_on(GridPoint { x: 0, y: 2 }, "E");
+
+        let edge_ab = g.add_edge(a, b, ());
+        let edge_bc = g.add_edge(b, c, ());
+        let edge_da = g.add_edge(d, a, ());
+        let edge_ed = g.add_edge(e, d, ());
+
+        assert_eq!(g.node_count(), 5);
+        assert_eq!(g.edge_count(), 4);
+
+        assert_eq!(g.find_edge(a, b).unwrap(), edge_ab);
+        assert_eq!(g.find_edge(b, c).unwrap(), edge_bc);
+        assert_eq!(g.find_edge(d, a).unwrap(), edge_da);
+        assert_eq!(g.find_edge(e, d).unwrap(), edge_ed);
+
+        assert!(g.find_edge(b, a).is_none());
     }
 }
