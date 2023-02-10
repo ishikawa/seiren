@@ -601,6 +601,14 @@ where
             .into_iter()
     }
 
+    /// Return an iterator yielding immutable access to all node weights.
+    pub fn node_weights(&self) -> std::vec::IntoIter<&N> {
+        self.node_indices()
+            .filter_map(|i| self.node_weight(i))
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+
     /// Return an iterator of all edges of `a`.
     ///
     /// - `Directed`: Outgoing edges from `a`.
@@ -1129,6 +1137,14 @@ mod grid_tests {
         assert!(indices.contains(&b));
         assert!(indices.contains(&c));
         assert!(indices.contains(&d));
+
+        let weights = g.node_weights().collect::<HashSet<_>>();
+
+        assert_eq!(weights.len(), 4);
+        assert!(weights.contains(&"A"));
+        assert!(weights.contains(&"B"));
+        assert!(weights.contains(&"C"));
+        assert!(weights.contains(&"D"));
     }
 
     #[test]
