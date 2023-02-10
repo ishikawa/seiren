@@ -103,10 +103,6 @@ struct GridShape {
 }
 
 impl GridShape {
-    pub fn new(columns: u16, rows: u16) -> Self {
-        Self { columns, rows }
-    }
-
     pub fn columns(&self) -> usize {
         self.columns as usize
     }
@@ -311,7 +307,7 @@ where
 {
     /// Create a new `GridGraph` with `m x n` grid.
     pub fn with_grid(columns: u16, rows: u16) -> Self {
-        let shape = GridShape::new(columns, rows);
+        let shape = GridShape { columns, rows };
         let node_bound = shape.node_bound();
         let edge_bound = shape.edge_bound();
         let mut nodes = Vec::with_capacity(node_bound);
@@ -939,7 +935,10 @@ mod grid_shape_tests {
 
     #[test]
     fn node_point() {
-        let shape = GridShape::new(3, 2);
+        let shape = GridShape {
+            columns: 3,
+            rows: 2,
+        };
 
         assert_eq!(shape.node_point(0), Some(GridPoint::new(0, 0)));
         assert_eq!(shape.node_point(2), Some(GridPoint::new(2, 0)));
@@ -949,7 +948,10 @@ mod grid_shape_tests {
 
     #[test]
     fn edge_index_between() {
-        let shape = GridShape::new(3, 2);
+        let shape = GridShape {
+            columns: 3,
+            rows: 2,
+        };
 
         // *---*...o...
         // :   :   :
