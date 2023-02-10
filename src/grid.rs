@@ -62,11 +62,9 @@
 //!             o...o...o
 //! (0, 9)             (4, 9)
 //! ```
-use chumsky::primitive::todo;
 use derive_more::Display;
 use fixedbitset::FixedBitSet;
 use petgraph::graph::{EdgeIndex, IndexType, NodeIndex};
-use petgraph::visit::EdgeRef;
 use petgraph::Direction::{self, Outgoing};
 use petgraph::{visit, Directed, EdgeType, Undirected};
 use smallvec::SmallVec;
@@ -538,6 +536,25 @@ where
         self.edges_directed(a, Outgoing)
     }
 
+    /// Create an iterator over all edges, in indexed order.
+    ///
+    /// Iterator element type is `EdgeReference<E, Ix>`.
+    pub fn edge_references(&self) -> std::vec::IntoIter<EdgeReference<'_, E, Ix>> {
+        self.edges
+            .iter()
+            .enumerate()
+            .filter_map(|(i, e)| {
+                e.as_ref().map(|edge| EdgeReference {
+                    index: EdgeIndex::new(i),
+                    source: edge.source(),
+                    target: edge.target(),
+                    weight: &edge.weight,
+                })
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+
     /// Return an iterator of all edges of `a`, in the specified direction.
     ///
     /// - `Directed`, `Outgoing`: All edges from `a`.
@@ -679,6 +696,14 @@ where
     }
 }
 
+impl<N, E, Ty, Ix> visit::Data for GridGraph<N, E, Ty, Ix>
+where
+    Ix: IndexType,
+{
+    type NodeWeight = N;
+    type EdgeWeight = E;
+}
+
 impl<N, E, Ty, Ix> visit::GraphBase for GridGraph<N, E, Ty, Ix>
 where
     Ix: IndexType,
@@ -782,18 +807,17 @@ where
     }
 }
 
-//TODO: IntoEdges required for dijkstra
-// impl<'a, N, E, Ty, Ix> visit::IntoEdges for &'a GridGraph<N, E, Ty, Ix>
-// where
-//     Ty: EdgeType,
-//     Ix: IndexType,
-// {
-//     type Edges = std::vec::IntoIter<EdgeReference<'a, E, Ix>>;
+impl<'a, N, E, Ty, Ix> visit::IntoEdges for &'a GridGraph<N, E, Ty, Ix>
+where
+    Ty: EdgeType,
+    Ix: IndexType,
+{
+    type Edges = std::vec::IntoIter<EdgeReference<'a, E, Ix>>;
 
-//     fn edges(self, a: Self::NodeId) -> Self::Edges {
-//         self.edges(a)
-//     }
-// }
+    fn edges(self, a: Self::NodeId) -> Self::Edges {
+        self.edges(a)
+    }
+}
 
 impl<'a, N, E, Ty, Ix> visit::IntoNeighbors for &'a GridGraph<N, E, Ty, Ix>
 where
@@ -804,6 +828,31 @@ where
 
     fn neighbors(self, a: Self::NodeId) -> Self::Neighbors {
         self.neighbors(a)
+    }
+}
+
+impl<'a, N, E: 'a, Ty, Ix> visit::IntoNeighborsDirected for &'a GridGraph<N, E, Ty, Ix>
+where
+    Ty: EdgeType,
+    Ix: IndexType,
+{
+    type NeighborsDirected = std::vec::IntoIter<Self::NodeId>;
+
+    fn neighbors_directed(self, n: NodeIndex<Ix>, d: Direction) -> Self::NeighborsDirected {
+        self.neighbors_directed(n, d)
+    }
+}
+
+impl<'a, N: 'a, E: 'a, Ty, Ix> visit::IntoEdgeReferences for &'a GridGraph<N, E, Ty, Ix>
+where
+    Ty: EdgeType,
+    Ix: IndexType,
+{
+    type EdgeRef = EdgeReference<'a, E, Ix>;
+    type EdgeReferences = std::vec::IntoIter<Self::EdgeRef>;
+
+    fn edge_references(self) -> Self::EdgeReferences {
+        self.edge_references()
     }
 }
 
@@ -902,7 +951,9 @@ mod grid_shape_tests {
 
 #[cfg(test)]
 mod grid_tests {
-    use std::collections::HashSet;
+    use std::collections::{HashMap, HashSet};
+
+    use petgraph::visit::EdgeRef;
 
     use super::*;
 
@@ -1027,7 +1078,7 @@ mod grid_tests {
         // A ---> B
         // ^      :
         // |      :
-        // C ---- D
+        // C .... D
         let mut g = DiGridGraph::<&str, ()>::with_grid(2, 2);
 
         let a = g.add_node("A");
@@ -1044,6 +1095,47 @@ mod grid_tests {
         assert!(neighbors.contains(&b));
         assert!(!neighbors.contains(&c));
         assert!(!neighbors.contains(&d));
+    }
+
+    #[test]
+    fn edge_references() {
+        // A .... B
+        // :      :
+        // :      :
+        // C .... D
+        let mut g = DiGridGraph::<&str, ()>::with_grid(2, 2);
+
+        let a = g.add_node("A");
+        let b = g.add_node("B");
+        let c = g.add_node("C");
+        let d = g.add_node("D");
+
+        assert_eq!(g.edge_references().collect::<Vec<_>>().len(), 0);
+
+        // A ---> B
+        // ^      :
+        // |      :
+        // C .... D
+        // Add edges
+        let e1 = g.add_edge(a, b, ());
+        let e2 = g.add_edge(c, a, ());
+
+        let edges = g
+            .edge_references()
+            .map(|e| (e.index(), e))
+            .collect::<HashMap<_, _>>();
+
+        assert_eq!(edges.len(), 2);
+
+        let r1 = edges.get(&e1);
+        assert!(r1.is_some());
+        assert_eq!(r1.unwrap().source(), a);
+        assert_eq!(r1.unwrap().target(), b);
+
+        let r2 = edges.get(&e2);
+        assert!(r2.is_some());
+        assert_eq!(r2.unwrap().source(), c);
+        assert_eq!(r2.unwrap().target(), a);
     }
 
     #[test]
