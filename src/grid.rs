@@ -4,8 +4,8 @@
 //!
 //! - **Grid point** - a point with integer coordinates.
 //! - **(m, n) grid** - the set of grid points `(x, y)` with:
-//!   - `0 <= x <= m`
-//!   - `0 <= y <= n`
+//!   - `0 <= x < m`
+//!   - `0 <= y < n`
 //! - Places each vertex of an undirected graph `G = (V, E)` at each grid point.
 //! - The number of edges (degree) `d` connecting each vertex is `0 <= d <= 4`.
 //! - Only adjacent vertices on the grid can be connected.

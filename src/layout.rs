@@ -2,7 +2,8 @@
 //!
 //! ## Algorithm
 //!
-//! To illustrate the layout algorithm implemented in this module, consider the following example.
+//! To illustrate the orthogonal routing algorithm implemented in this module, consider the
+//! following example:
 //!
 //! ```plaintext
 //! posts.created_by o--> users.id
@@ -66,13 +67,13 @@
 //! The rules for drawing connections are shown below:
 //!
 //! - There are _connection ports_ to the left, right, or bottom of the field that can be connected.
-//! - Connections can only go horizontally or vertically and can turn at _bends_ around the record.
-//!   - Therefore, the angle of the bend must always be a right angle,
+//! - Connections can only go horizontally or vertically and can turn at _bends_ around a record.
+//!   - Therefore, the angle of a bend must always be a right angle,
 //! - Connections should choose the shortest path.
 //! - Connections incident to different fields SHOULD NOT intersect or take the same path.
 //!
-//! To calculate the path of a connection, first consider fields, connection ports and bends as
-//! vertices aligned on lines of the grid.
+//! To calculate the path of a connection (*routing*), first consider fields (connection ports) and
+//! bends as vertices aligned on lines of the grid.
 //!
 //! ```svgbob
 //! (0, 0)             (4, 0)
@@ -128,8 +129,8 @@
 //!
 //! - **Grid point** - a point with integer coordinates.
 //! - **(m, n) grid** - the set of grid points `(x, y)` with:
-//!   - `0 <= x <= m`
-//!   - `0 <= y <= n`
+//!   - `0 <= x < m`
+//!   - `0 <= y < n`
 //! - Places each vertex of an undirected graph `G = (V, E)` at each grid point.
 //! - The number of edges (degree) `d` connecting each vertex is `0 <= d <= 4`.
 //! - **Path** - A sequence of connected vertices in a graph is called a *path*.
