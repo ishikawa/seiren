@@ -14,6 +14,7 @@ derive_builder = "0.12.0"
 derive_more = "0.99.17"
 smallvec = "1.10.0"
 petgraph = "0.6.2"
+fixedbitset = "0.4.2"
 
 [dev-dependencies]
 difference = "2.0"

@@ -5,7 +5,7 @@ use seiren::renderer::{Renderer, SVGRenderer};
 use std::io;
 use std::{fs, io::Read};
 
-const DEBUG: bool = false;
+const DEBUG: bool = true;
 
 fn main() -> Result<(), io::Error> {
     let mut filename = "(stdin)".to_string();
