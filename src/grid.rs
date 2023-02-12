@@ -137,6 +137,12 @@ impl GridShape {
         })
     }
 
+    /// Return an iterator which iterates grid points in column-wise.
+    pub fn node_points(&self) -> impl Iterator<Item = GridPoint> + '_ {
+        (0..self.rows)
+            .flat_map(|row| (0..self.columns).map(move |column| GridPoint { x: column, y: row }))
+    }
+
     pub fn to_node_index(&self, point: GridPoint) -> Option<usize> {
         let i = point.x() + point.y() * self.columns();
 
@@ -321,6 +327,10 @@ where
             ty: PhantomData,
             ix: PhantomData,
         }
+    }
+
+    pub fn shape(&self) -> &GridShape {
+        &self.shape
     }
 
     /// Return the upper bound of the node indices in a grid.
@@ -946,6 +956,22 @@ where
     }
 }
 
+// svgbob
+// TODO: impl
+pub trait ToSvgbob {
+    fn to_svgbob(&self) -> String;
+}
+
+impl<N, E, Ty, Ix> ToSvgbob for GridGraph<N, E, Ty, Ix>
+where
+    Ty: EdgeType,
+    Ix: IndexType,
+{
+    fn to_svgbob(&self) -> String {
+        todo!();
+    }
+}
+
 #[cfg(test)]
 mod grid_shape_tests {
     use super::*;
@@ -961,6 +987,24 @@ mod grid_shape_tests {
         assert_eq!(shape.node_point(2), Some(GridPoint { x: 2, y: 0 }));
         assert_eq!(shape.node_point(3), Some(GridPoint { x: 0, y: 1 }));
         assert_eq!(shape.node_point(5), Some(GridPoint { x: 2, y: 1 }));
+    }
+
+    #[test]
+    fn node_points() {
+        let shape = GridShape {
+            columns: 3,
+            rows: 2,
+        };
+
+        let points = shape.node_points().collect::<Vec<_>>();
+
+        assert_eq!(points.len(), 6);
+        assert_eq!(points[0], GridPoint { x: 0, y: 0 });
+        assert_eq!(points[1], GridPoint { x: 1, y: 0 });
+        assert_eq!(points[2], GridPoint { x: 2, y: 0 });
+        assert_eq!(points[3], GridPoint { x: 0, y: 1 });
+        assert_eq!(points[4], GridPoint { x: 1, y: 1 });
+        assert_eq!(points[5], GridPoint { x: 2, y: 1 });
     }
 
     #[test]
