@@ -137,6 +137,12 @@ impl GridShape {
         })
     }
 
+    /// Return an iterator which iterates grid points in column-wise.
+    pub fn node_points(&self) -> impl Iterator<Item = GridPoint> + '_ {
+        (0..self.rows)
+            .flat_map(|row| (0..self.columns).map(move |column| GridPoint { x: column, y: row }))
+    }
+
     pub fn to_node_index(&self, point: GridPoint) -> Option<usize> {
         let i = point.x() + point.y() * self.columns();
 
@@ -321,6 +327,17 @@ where
             ty: PhantomData,
             ix: PhantomData,
         }
+    }
+
+    pub fn shape(&self) -> &GridShape {
+        &self.shape
+    }
+
+    /// Returns the index at a grid point.
+    /// Panic: if the grid point is out of bounds.
+    pub fn node_index(&self, point: GridPoint) -> NodeIndex<Ix> {
+        let idx = self.shape.to_node_index(point).unwrap();
+        NodeIndex::new(idx)
     }
 
     /// Return the upper bound of the node indices in a grid.
@@ -946,6 +963,142 @@ where
     }
 }
 
+// svgbob
+// TODO: impl
+pub trait ToSvgbob {
+    fn to_svgbob(&self) -> String;
+}
+
+impl<N, E, Ty, Ix> ToSvgbob for GridGraph<N, E, Ty, Ix>
+where
+    Ty: EdgeType,
+    Ix: IndexType,
+{
+    fn to_svgbob(&self) -> String {
+        let mut buffer = String::new();
+        let shape = self.shape();
+
+        for row in 0..shape.rows {
+            if row != 0 {
+                // vertical edges
+                let edges = (0..shape.columns)
+                    .map(|column| {
+                        let index = self.node_index(GridPoint { x: column, y: row });
+                        let up = self.node_index(GridPoint {
+                            x: column,
+                            y: row - 1,
+                        });
+
+                        let outgoing = self.find_edge(index, up);
+                        let incoming = self.find_edge(up, index);
+
+                        (outgoing, incoming)
+                    })
+                    .collect::<Vec<_>>();
+
+                // line #1
+                buffer.push('\n');
+                for (column, (outgoing, incoming)) in edges.iter().enumerate() {
+                    if column != 0 {
+                        buffer.push_str("       ");
+                    }
+                    if outgoing.is_some() || incoming.is_some() {
+                        if outgoing.is_some() {
+                            if self.is_directed() {
+                                buffer.push('^');
+                            } else {
+                                buffer.push('|');
+                            }
+                        }
+                        if incoming.is_some() {
+                            buffer.push('|');
+                        }
+                    } else {
+                        buffer.push_str(":");
+                    }
+                }
+
+                // line #2
+                buffer.push('\n');
+                for (column, (outgoing, incoming)) in edges.iter().enumerate() {
+                    if column != 0 {
+                        buffer.push_str("       ");
+                    }
+                    if outgoing.is_some() || incoming.is_some() {
+                        buffer.push('|');
+                    } else {
+                        buffer.push_str(":");
+                    }
+                }
+
+                // line #3
+                buffer.push('\n');
+                for (column, (outgoing, incoming)) in edges.iter().enumerate() {
+                    if column != 0 {
+                        buffer.push_str("       ");
+                    }
+                    if outgoing.is_some() || incoming.is_some() {
+                        if outgoing.is_some() {
+                            buffer.push('|');
+                        }
+                        if incoming.is_some() {
+                            if self.is_directed() {
+                                buffer.push('|');
+                            } else {
+                                buffer.push('v');
+                            }
+                        }
+                    } else {
+                        buffer.push_str(":");
+                    }
+                }
+                buffer.push('\n');
+            }
+
+            // horizontal
+            for column in 0..shape.columns {
+                let index = self.node_index(GridPoint { x: column, y: row });
+
+                // edge
+                if column != 0 {
+                    let left = self.node_index(GridPoint {
+                        x: column - 1,
+                        y: row,
+                    });
+
+                    let outgoing = self.find_edge(index, left);
+                    let incoming = self.find_edge(left, index);
+
+                    if outgoing.is_some() || incoming.is_some() {
+                        if outgoing.is_some() && self.is_directed() {
+                            buffer.push('<');
+                        } else {
+                            buffer.push('-');
+                        }
+                        buffer.push_str("-----");
+                        if incoming.is_some() && self.is_directed() {
+                            buffer.push('>');
+                        } else {
+                            buffer.push('-');
+                        }
+                    } else {
+                        buffer.push_str("- - - -");
+                    }
+                }
+
+                // vertex
+                if self.node_weight(index).is_some() {
+                    buffer.push('*');
+                } else {
+                    buffer.push('o');
+                }
+            }
+        }
+
+        buffer
+    }
+}
+
 #[cfg(test)]
 mod grid_shape_tests {
     use super::*;
@@ -961,6 +1114,24 @@ mod grid_shape_tests {
         assert_eq!(shape.node_point(2), Some(GridPoint { x: 2, y: 0 }));
         assert_eq!(shape.node_point(3), Some(GridPoint { x: 0, y: 1 }));
         assert_eq!(shape.node_point(5), Some(GridPoint { x: 2, y: 1 }));
+    }
+
+    #[test]
+    fn node_points() {
+        let shape = GridShape {
+            columns: 3,
+            rows: 2,
+        };
+
+        let points = shape.node_points().collect::<Vec<_>>();
+
+        assert_eq!(points.len(), 6);
+        assert_eq!(points[0], GridPoint { x: 0, y: 0 });
+        assert_eq!(points[1], GridPoint { x: 1, y: 0 });
+        assert_eq!(points[2], GridPoint { x: 2, y: 0 });
+        assert_eq!(points[3], GridPoint { x: 0, y: 1 });
+        assert_eq!(points[4], GridPoint { x: 1, y: 1 });
+        assert_eq!(points[5], GridPoint { x: 2, y: 1 });
     }
 
     #[test]
@@ -1286,5 +1457,51 @@ mod grid_tests {
         assert_eq!(g.find_edge(e, d).unwrap(), edge_ed);
 
         assert!(g.find_edge(b, a).is_none());
+    }
+
+    #[cfg(test)]
+    mod svgbob_tests {
+        use super::*;
+
+        #[test]
+        fn add_node() {
+            // A ---> B ---> C
+            // ^      :      :
+            // |      :      :
+            // D .... o .... o
+            // ^      :      :
+            // |      :      :
+            // E .... o .... o
+            let mut g = DiGridGraph::<&str, ()>::with_shape(GridShape {
+                columns: 3,
+                rows: 3,
+            });
+
+            let a = g.update_node_on(GridPoint { x: 0, y: 0 }, "A");
+            let b = g.update_node_on(GridPoint { x: 1, y: 0 }, "B");
+            let c = g.update_node_on(GridPoint { x: 2, y: 0 }, "C");
+            let d = g.update_node_on(GridPoint { x: 0, y: 1 }, "D");
+            let e = g.update_node_on(GridPoint { x: 0, y: 2 }, "E");
+
+            g.add_edge(a, b, ());
+            g.add_edge(b, c, ());
+            g.add_edge(d, a, ());
+            g.add_edge(e, d, ());
+
+            assert_eq!(
+                g.to_svgbob(),
+                "
+*------>*------>*
+^       :       :
+|       :       :
+|       :       :
+*- - - -o- - - -o
+^       :       :
+|       :       :
+|       :       :
+*- - - -o- - - -o"
+                    .trim()
+            );
+        }
     }
 }
